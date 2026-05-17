@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use crate::JsonValue;
+use crate::{JsonError, JsonValue};
 use crate::lexer::{Lexer, Token};
 
-pub fn parse_from_str(input: &str) -> Result<JsonValue, String> {
+pub fn parse_from_str(input: &str) -> Result<JsonValue, JsonError> {
     let mut lexer = Lexer::new(input);
     let mut tokens = Vec::new();
 
@@ -19,6 +19,20 @@ pub struct Parser {
     position: usize,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum ParserError {
+    UnexpectedToken,
+    UnexpectedEndOfInput,
+    InvalidNumber,
+    UnterminatedString,
+    TrailingComma,
+    ExpectedComma,
+    ExpectedColon,
+    ExpectedCommaOrRightBracket,
+    ExpectedCommaOrRightBrace,
+    ExpectedStringKey
+}
+
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
@@ -26,10 +40,10 @@ impl Parser {
             position: 0
         }
     }
-    fn parse(&mut self) -> Result<JsonValue, String> {
+    fn parse(&mut self) -> Result<JsonValue, JsonError> {
         let value = self.parse_value()?;
         if self.peek().is_some() {
-            return Err("Unexpected trailing tokens".to_string());
+            return Err(JsonError::Parser(ParserError::UnexpectedToken));
         }
         Ok(value)
     }
@@ -43,15 +57,15 @@ impl Parser {
         self.position += 1;
         Some(token)
     }
-    fn expect(&mut self, expected: Token) -> Result<(), String> {
+    fn expect(&mut self, expected: Token) -> Result<(), JsonError> {
         match self.next() {
             Some(token) if token == expected => Ok(()),
-            Some(token) => Err(format!("Expected {:?} but received {:?}", expected, token)),
-            None => Err("Unexpected end of input".to_string())
+            Some(_token) => Err(JsonError::Parser(ParserError::UnexpectedToken)),
+            None => Err(JsonError::Parser(ParserError::UnexpectedEndOfInput))
         }
     }
 
-    fn parse_value(&mut self) -> Result<JsonValue, String> {
+    fn parse_value(&mut self) -> Result<JsonValue, JsonError> {
         match self.peek() {
             Some(Token::Null) => {
                 self.next();
@@ -67,19 +81,19 @@ impl Parser {
             },
             Some(Token::Number(_)) => match self.next() {
                 Some(Token::Number(n)) => Ok(JsonValue::Number(n)),
-                _ => Err("Expected number".to_string())
+                _ => Err(JsonError::Parser(ParserError::InvalidNumber))
             },
             Some(Token::String(_)) => match self.next() {
                 Some(Token::String(s)) => Ok(JsonValue::String(s)),
-                _ => Err("Expected string".to_string())
+                _ => Err(JsonError::Parser(ParserError::UnterminatedString))
             },
             Some(Token::LeftBracket) => self.parse_array(),
             Some(Token::LeftBrace) => self.parse_object(),
-            _ => Err("Unexpected json value".to_string())
+            _ => Err(JsonError::Parser(ParserError::UnexpectedToken))
         }
     }
 
-    fn parse_array(&mut self) -> Result<JsonValue, String> {
+    fn parse_array(&mut self) -> Result<JsonValue, JsonError> {
         self.expect(Token::LeftBracket)?;
         let mut array: Vec<JsonValue> = Vec::new();
 
@@ -96,11 +110,11 @@ impl Parser {
                         Some(Token::Comma) => {
                             self.next();
                             if matches!(self.peek(), Some(Token::RightBracket)) {
-                                return Err("Trailing commas are not allowed".to_string());
+                                return Err(JsonError::Parser(ParserError::TrailingComma));
                             }
                         }
                         Some(Token::RightBracket) => {}
-                        _ => {  return Err("Expected comma or ]".to_string()); }
+                        _ => {  return Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBracket)) }
                     }
                 }
             }
@@ -109,7 +123,7 @@ impl Parser {
         Ok(JsonValue::Array(array))
     }
 
-    fn parse_object(&mut self) -> Result<JsonValue, String> {
+    fn parse_object(&mut self) -> Result<JsonValue, JsonError> {
         self.expect(Token::LeftBrace)?;
         let mut object = HashMap::new();
 
@@ -131,14 +145,14 @@ impl Parser {
                         Some(Token::Comma) => {
                             self.next();
                             if matches!(self.peek(), Some(Token::RightBrace)) {
-                                return Err("Trailing commas are not allowed".to_string())
+                                return Err(JsonError::Parser(ParserError::TrailingComma))
                             }
                         },
                         Some(Token::RightBrace) => {}
-                        _ => return Err("Expected comma or }".to_string())
+                        _ => return Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBrace))
                     }
                 }
-                _ => return Err("Expected string key".to_string())
+                _ => return Err(JsonError::Parser(ParserError::ExpectedStringKey))
             }
         }
         Ok(JsonValue::Object(object))

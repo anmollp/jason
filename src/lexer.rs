@@ -1,3 +1,5 @@
+use crate::{JsonError};
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     LeftBrace,
@@ -16,6 +18,14 @@ pub enum Token {
 pub struct Lexer {
     chars: Vec<char>,
     position: usize
+}
+
+#[derive(Debug, PartialEq)]
+pub enum LexerError {
+    UnexpectedCharacter,
+    UnterminatedString,
+    InvalidNumber,
+    UnexpectedLiteral
 }
 
 impl Lexer {
@@ -47,7 +57,7 @@ impl Lexer {
         }
     }
 
-    pub fn next_token(&mut self) -> Result<Option<Token>, String> {
+    pub fn next_token(&mut self) -> Result<Option<Token>, JsonError> {
         self.skip_whitespace();
         let ch = match self.peek() {
             Some(c) => c,
@@ -66,11 +76,11 @@ impl Lexer {
             'f' => {self.read_literal("false")?; Ok(Some(Token::False))},
             'n' => {self.read_literal("null")?; Ok(Some(Token::Null))},
             c if c.is_ascii_digit() || c == '-' => Ok(Some(Token::Number(self.read_number()?))),
-            _ => Err("Unexpected character".to_string()),
+            _ => Err(JsonError::Lexer(LexerError::UnexpectedCharacter)),
         }
     }
 
-    fn read_string(&mut self) -> Result<String, String> {
+    fn read_string(&mut self) -> Result<String, JsonError> {
         let mut string_token = String::new();
         self.next();
         while let Some(ch) = self.next() {
@@ -79,10 +89,10 @@ impl Lexer {
                 _ => string_token.push(ch)
             };
         }
-        Err("Unterminated String".to_string())
+        Err(JsonError::Lexer(LexerError::UnterminatedString))
     }
 
-    fn read_number(&mut self) -> Result<i64, String> {
+    fn read_number(&mut self) -> Result<i64, JsonError> {
         let mut number = String::new();
         if self.peek() == Some('-') {
             number.push('-');
@@ -100,14 +110,14 @@ impl Lexer {
         };
         number
             .parse::<i64>()
-            .map_err(|_| "Invalid number".to_string())
+            .map_err(|_| JsonError::Lexer(LexerError::InvalidNumber))
     }
 
-    fn read_literal(&mut self, expected: &str) -> Result<(), String> {
+    fn read_literal(&mut self, expected: &str) -> Result<(), JsonError> {
         for expected_char in expected.chars() {
             match self.next() {
                 Some(c) if c == expected_char => {},
-                _ => return Err(format!("Expected: {}", expected)),
+                _ => return Err(JsonError::Lexer(LexerError::UnexpectedLiteral)),
             }
         }
         Ok(())
