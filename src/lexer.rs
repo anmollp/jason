@@ -19,7 +19,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    fn new(input: &str) -> Self {
+    pub fn new(input: &str) -> Self {
         Lexer{
             chars: input.chars().collect(),
             position: 0
@@ -47,7 +47,7 @@ impl Lexer {
         }
     }
 
-    fn next_token(&mut self) -> Result<Option<Token>, String> {
+    pub fn next_token(&mut self) -> Result<Option<Token>, String> {
         self.skip_whitespace();
         let ch = match self.peek() {
             Some(c) => c,
@@ -62,6 +62,9 @@ impl Lexer {
             ':' => {self.next(); Ok(Some(Token::Colon))},
             ',' => {self.next(); Ok(Some(Token::Comma))},
             '"' => Ok(Some(Token::String(self.read_string()?))),
+            't' => {self.read_literal("true")?; Ok(Some(Token::True))},
+            'f' => {self.read_literal("false")?; Ok(Some(Token::False))},
+            'n' => {self.read_literal("null")?; Ok(Some(Token::Null))},
             c if c.is_ascii_digit() || c == '-' => Ok(Some(Token::Number(self.read_number()?))),
             _ => Err("Unexpected character".to_string()),
         }
@@ -98,5 +101,15 @@ impl Lexer {
         number
             .parse::<i64>()
             .map_err(|_| "Invalid number".to_string())
+    }
+
+    fn read_literal(&mut self, expected: &str) -> Result<(), String> {
+        for expected_char in expected.chars() {
+            match self.next() {
+                Some(c) if c == expected_char => {},
+                _ => return Err(format!("Expected: {}", expected)),
+            }
+        }
+        Ok(())
     }
 }
