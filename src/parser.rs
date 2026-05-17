@@ -93,7 +93,12 @@ impl Parser {
                 let value = self.parse_value()?;
                 array.push(value);
                     match self.peek() {
-                        Some(Token::Comma) => {self.next();}
+                        Some(Token::Comma) => {
+                            self.next();
+                            if matches!(self.peek(), Some(Token::RightBracket)) {
+                                return Err("Trailing commas are not allowed".to_string());
+                            }
+                        }
                         Some(Token::RightBracket) => {}
                         _ => {  return Err("Expected comma or ]".to_string()); }
                     }
@@ -123,7 +128,12 @@ impl Parser {
                     let value = self.parse_value()?;
                     object.insert(key, value);
                     match self.peek() {
-                        Some(Token::Comma) => {self.next();},
+                        Some(Token::Comma) => {
+                            self.next();
+                            if matches!(self.peek(), Some(Token::RightBrace)) {
+                                return Err("Trailing commas are not allowed".to_string())
+                            }
+                        },
                         Some(Token::RightBrace) => {}
                         _ => return Err("Expected comma or }".to_string())
                     }

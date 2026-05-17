@@ -92,4 +92,36 @@ mod tests {
         assert_eq!(result, JsonValue::Object(expected));
         Ok(())
     }
+
+    #[test]
+    fn test_missing_closing_bracket() {
+        let result = parse_from_str("[1, 2");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_missing_colon() {
+        let result = parse_from_str("{\"a\" 1}");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_trailing_comma() {
+        let result = parse_from_str("[1, 2,]");
+        assert!(result.is_err());
+        let result = parse_from_str("{\"a\": false,}");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unterminated_string() {
+        let result = parse_from_str("\"olleh");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unexpected_token() {
+        let result = parse_from_str("{true: 1}");
+        assert!(result.is_err());
+    }
 }
