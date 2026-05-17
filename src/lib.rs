@@ -4,6 +4,8 @@ pub mod parser;
 use std::collections::HashMap;
 
 pub use parser::parse_from_str;
+use crate::lexer::LexerError;
+use crate::parser::ParserError;
 
 #[derive(Debug, PartialEq)]
 pub enum JsonValue {
@@ -15,19 +17,25 @@ pub enum JsonValue {
     Object(HashMap<String, JsonValue>)
 }
 
+#[derive(Debug)]
+pub enum JsonError {
+    Lexer(LexerError),
+    Parser(ParserError)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_integer() -> Result<(), String> {
+    fn test_parse_integer() -> Result<(), JsonError> {
         let result = parse_from_str("123")?;
         assert_eq!(result, JsonValue::Number(123));
         Ok(())
     }
 
     #[test]
-    fn test_parse_array() -> Result<(), String> {
+    fn test_parse_array() -> Result<(), JsonError> {
         let result = parse_from_str("[1, 2, 3]")?;
         assert_eq!(result, JsonValue::Array(vec![
             JsonValue::Number(1),
@@ -39,7 +47,7 @@ mod tests {
     }
 
     #[test]
-    fn test_polymorphic_array() -> Result<(), String> {
+    fn test_polymorphic_array() -> Result<(), JsonError> {
         let result = parse_from_str("[3, true, \"Hello\"]")?;
         assert_eq!(result, JsonValue::Array(vec![
             JsonValue::Number(3),
@@ -50,7 +58,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_array() -> Result<(), String> {
+    fn test_nested_array() -> Result<(), JsonError> {
         let result = parse_from_str("[1, [2, 3], 4]")?;
         assert_eq!(result, JsonValue::Array(vec![
             JsonValue::Number(1),
@@ -64,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn test_simple_object() -> Result<(), String> {
+    fn test_simple_object() -> Result<(), JsonError> {
         let result = parse_from_str("{\"key\": \"value\"}")?;
         let mut expected = HashMap::new();
         expected.insert("key".to_string(), JsonValue::String("value".to_string()));
@@ -73,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multi_field_object() -> Result<(), String> {
+    fn test_multi_field_object() -> Result<(), JsonError> {
         let result = parse_from_str(r#"{"a": 1, "b": true}"#)?;
         let mut expected = HashMap::new();
         expected.insert("a".to_string(), JsonValue::Number(1));
@@ -83,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_object() -> Result<(), String> {
+    fn test_nested_object() -> Result<(), JsonError> {
         let result = parse_from_str(r#"{"a": {"b": 2}}"#)?;
         let mut expected = HashMap::new();
         let mut expected_nested = HashMap::new();
