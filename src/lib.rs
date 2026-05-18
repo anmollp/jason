@@ -166,4 +166,11 @@ mod tests {
         assert_eq!(result, JsonValue::Object(HashMap::new()));
         Ok(())
     }
+
+    #[test]
+    fn test_unicode_parse() -> Result<(), JsonError> {
+        let result = parse_from_str(r#""\u0041\u0050""#)?;
+        assert_eq!(result, JsonValue::String("AP".to_string()));
+        Ok(())
+    }
 }

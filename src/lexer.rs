@@ -1,4 +1,4 @@
-use crate::{JsonError};
+use crate::JsonError;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -26,7 +26,9 @@ pub enum LexerError {
     UnterminatedString,
     InvalidNumber,
     UnexpectedLiteral,
-    UnterminatedNumber
+    UnterminatedNumber,
+    InvalidUnicodeEscape,
+    UnexpectedEndOfInput
 }
 
 impl Lexer {
@@ -93,7 +95,9 @@ impl Lexer {
                         Some('t') => '\t',
                         Some('\\') => '\\',
                         Some('"') => '"',
-                        _ => return Err(JsonError::Lexer(LexerError::UnexpectedCharacter))
+                        Some('u') => self.read_unicode_escape()?,
+                        Some(_other) => return Err(JsonError::Lexer(LexerError::InvalidUnicodeEscape)),
+                        None => return Err(JsonError::Lexer(LexerError::UnexpectedEndOfInput))
                     };
                     string_token.push(escaped);
                 }
@@ -101,6 +105,20 @@ impl Lexer {
             };
         }
         Err(JsonError::Lexer(LexerError::UnterminatedString))
+    }
+
+    fn read_unicode_escape(&mut self) -> Result<char, JsonError> {
+        let mut hex = String::new();
+        for _ in 0..4 {
+            match self.next() {
+                Some(c) if c.is_ascii_hexdigit() => hex.push(c),
+                _ => return Err(JsonError::Lexer(LexerError::InvalidUnicodeEscape))
+            }
+        }
+        let code_point = u32::from_str_radix(&hex, 16)
+                .map_err(|_| JsonError::Lexer(LexerError::InvalidUnicodeEscape))?;
+        char::from_u32(code_point)
+            .ok_or(JsonError::Lexer(LexerError::InvalidUnicodeEscape))
     }
 
     fn read_number(&mut self) -> Result<f64, JsonError> {
