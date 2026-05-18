@@ -9,7 +9,7 @@ pub enum Token {
     Colon,
     Comma,
     String(String),
-    Number(i64),
+    Number(f64),
     True,
     False,
     Null
@@ -25,7 +25,8 @@ pub enum LexerError {
     UnexpectedCharacter,
     UnterminatedString,
     InvalidNumber,
-    UnexpectedLiteral
+    UnexpectedLiteral,
+    UnterminatedNumber
 }
 
 impl Lexer {
@@ -86,30 +87,54 @@ impl Lexer {
         while let Some(ch) = self.next() {
             match ch {
                 '"' => return Ok(string_token),
+                '\\' => {
+                    let escaped = match self.next() {
+                        Some('n') => '\n',
+                        Some('t') => '\t',
+                        Some('\\') => '\\',
+                        Some('"') => '"',
+                        _ => return Err(JsonError::Lexer(LexerError::UnexpectedCharacter))
+                    };
+                    string_token.push(escaped);
+                }
                 _ => string_token.push(ch)
             };
         }
         Err(JsonError::Lexer(LexerError::UnterminatedString))
     }
 
-    fn read_number(&mut self) -> Result<i64, JsonError> {
+    fn read_number(&mut self) -> Result<f64, JsonError> {
         let mut number = String::new();
         if self.peek() == Some('-') {
             number.push('-');
             self.next();
         }
 
+        let mut seen_dot = false;
+        let mut digit_after_dot = false;
+
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() {
+                if seen_dot {
+                    digit_after_dot = true;
+                }
                 number.push(ch);
+                self.next();
+            }
+            else if ch == '.' && !seen_dot  {
+                number.push(ch);
+                seen_dot = true;
                 self.next();
             }
             else {
                 break;
             }
         };
+        if seen_dot && !digit_after_dot {
+            return Err(JsonError::Lexer(LexerError::UnterminatedNumber))
+        }
         number
-            .parse::<i64>()
+            .parse::<f64>()
             .map_err(|_| JsonError::Lexer(LexerError::InvalidNumber))
     }
 
