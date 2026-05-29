@@ -7,7 +7,7 @@ fn main() {
       "username": "jdoe_99",
       "email": "john.doe@example.com",
       "isActive": true ,
-      "roles": ["Admin", "Editor",],
+      "roles": ["Admin", "Editor"],
       "preferences": {
         "theme": "dark",
         "notifications": "enabled"

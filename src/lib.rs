@@ -23,6 +23,12 @@ pub enum JsonError {
     Parser(ParserError)
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Position {
+    line: usize,
+    column: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,5 +178,11 @@ mod tests {
         let result = parse_from_str(r#""\u0041\u0050""#)?;
         assert_eq!(result, JsonValue::String("AP".to_string()));
         Ok(())
+    }
+
+    #[test]
+    fn test_literal_parse() {
+        let result = parse_from_str("truex");
+        assert!(result.is_err());
     }
 }
