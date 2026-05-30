@@ -113,7 +113,7 @@ impl Lexer {
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.peek() {
             if ch.is_whitespace() {
-                self.position += 1
+                self.next();
             }
             else {
                 break;
@@ -218,6 +218,9 @@ impl Lexer {
                 }
             } else if ch.is_ascii_digit() {
                 number.push(ch);
+            }
+            else {
+                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())))
             }
         }
 
