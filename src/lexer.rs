@@ -204,49 +204,91 @@ impl Lexer {
 
     fn read_number(&mut self) -> Result<f64, JsonError> {
         let mut number = String::new();
+        // optional sign
         if self.peek() == Some('-') {
-            number.push('-');
-            self.next();
+            number.push(self.next().unwrap());
         }
 
-        if let Some(ch) = self.next() {
-            if ch == '0' {
-                number.push(ch);
-                match self.peek() {
-                    Some(c) if c.is_ascii_digit() => return Err(JsonError::Lexer(LexerError::LeadingZero(self.current_positon()))),
-                    _ => {}
+        // integer part
+        let mut digit_count = 0;
+        if self.peek() == Some('0') {
+            number.push(self.next().unwrap());
+            digit_count += 1;
+
+            // leading zero check
+            if let Some(ch) = self.peek() {
+                if ch.is_ascii_digit() {
+                    return Err(JsonError::Lexer(
+                        LexerError::LeadingZero(self.current_positon()),
+                    ));
                 }
-            } else if ch.is_ascii_digit() {
-                number.push(ch);
             }
-            else {
-                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())))
-            }
-        }
-
-        let mut seen_dot = false;
-        let mut digit_after_dot = false;
-
-        while let Some(ch) = self.peek() {
-            if ch.is_ascii_digit() {
-                if seen_dot {
-                    digit_after_dot = true;
+        } else {
+                while let Some(ch) = self.peek() {
+                    if ch.is_ascii_digit() {
+                        digit_count += 1;
+                        number.push(self.next().unwrap());
+                    }
+                    else {
+                        break;
+                    }
                 }
-                number.push(ch);
-                self.next();
             }
-            else if ch == '.' && !seen_dot  {
-                number.push(ch);
-                seen_dot = true;
-                self.next();
-            }
-            else {
-                break;
-            }
-        };
-        if seen_dot && !digit_after_dot {
-            return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())))
+
+        if digit_count == 0 {
+            return Err(JsonError::Lexer(
+                LexerError::InvalidNumber(self.current_positon()),
+            ));
         }
+
+        // fractional part
+        if self.peek() == Some('.') {
+            number.push(self.next().unwrap());
+
+            let mut frac_digits = 0;
+            while let Some(ch) = self.peek() {
+                if ch.is_ascii_digit() {
+                    frac_digits += 1;
+                    number.push(self.next().unwrap());
+                } else {
+                    break;
+                }
+            }
+
+            if frac_digits == 0 {
+                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())));
+            }
+        }
+
+        // exponent part
+        if let Some(ch) = self.peek() {
+            if ch == 'e' || ch == 'E' {
+                number.push(self.next().unwrap());
+
+                // optional exponent sign
+                if let Some(ch) = self.peek() {
+                    if ch == '+' || ch == '-' {
+                        number.push(self.next().unwrap());
+                    }
+                }
+
+                let mut exponent_digits = 0;
+                while let Some(ch) = self.peek() {
+                    if ch.is_ascii_digit() {
+                        exponent_digits += 1;
+                        number.push(self.next().unwrap());
+                    }
+                    else {
+                        break;
+                    }
+                }
+
+                if exponent_digits == 0 {
+                    return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())));
+                }
+            }
+        }
+
         number
             .parse::<f64>()
             .map_err(|_| JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())))
