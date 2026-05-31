@@ -49,6 +49,7 @@ mod tests {
                 _ => panic!("expected invalid number error")
             }
         }
+
         #[test]
         fn test_literal_parse() {
             let result = parse_from_str("truex");
@@ -102,6 +103,16 @@ mod tests {
                 }
                 _ => panic!("expected Leading zero error"),
             }
+        }
+
+        #[test]
+        fn test_invalid_exponent_numbers() {
+            let result = parse_from_str("1e+");
+            assert_invalid_number(result);
+            let result = parse_from_str("1ee10");
+            assert_invalid_number(result);
+            let result = parse_from_str("1e-+3");
+            assert_invalid_number(result);
         }
     }
 
@@ -270,6 +281,16 @@ mod tests {
             expected);
             Ok(())
         }
+
+        #[test]
+        fn test_valid_exponent_numbers() -> Result<(), JsonError> {
+            assert_eq!(parse_from_str("1e10")?, JsonValue::Number(10000000000.0));
+            assert_eq!(parse_from_str("1E10")?, JsonValue::Number(10000000000.0));
+            assert_eq!(parse_from_str("1.5e-3")?, JsonValue::Number(0.0015));
+            assert_eq!(parse_from_str("1.5e+3")?, JsonValue::Number(1500.0));
+            assert_eq!(parse_from_str("-1.5e3")?, JsonValue::Number(-1500.0));
+            Ok(())
+        }
     }
 
     mod parser_invalid_tests {
@@ -287,6 +308,13 @@ mod tests {
             match result {
                 Err(JsonError::Parser(ParserError::UnexpectedToken(_))) => {},
                 _ => panic!("expected unexpected token error")
+            }
+        }
+
+        fn assert_expected_string_key(result: Result<JsonValue, JsonError>) {
+            match result {
+                Err(JsonError::Parser(ParserError::ExpectedStringKey(_))) => {},
+                _ => panic!("expected string key error")
             }
         }
 
@@ -364,10 +392,7 @@ mod tests {
             let result1 = parse_from_str("{\"a\":}");
             assert_unexpected_token(result1);
             let result2 = parse_from_str("{,}");
-            match result2 {
-                Err(JsonError::Parser(ParserError::ExpectedStringKey(_))) => {},
-                _ => panic!("expected string key error")
-            }
+            assert_expected_string_key(result2);
             let result3 = parse_from_str("{\"a\",1}");
             assert_unexpected_token(result3)
         }
