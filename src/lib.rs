@@ -2,7 +2,7 @@ pub mod lexer;
 pub mod parser;
 
 use std::collections::HashMap;
-
+use std::fmt::{Display, Formatter};
 pub use parser::parse_from_str;
 use crate::lexer::LexerError;
 use crate::parser::ParserError;
@@ -23,10 +23,26 @@ pub enum JsonError {
     Parser(ParserError)
 }
 
+impl std::error::Error for JsonError {}
+impl Display for JsonError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JsonError::Lexer(err) => write!(f, "{err}"),
+            JsonError::Parser(err) => write!(f, "{err}")
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Position {
     line: usize,
     column: usize,
+}
+
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "line {}, column {}", self.line, self.column)
+    }
 }
 
 #[cfg(test)]

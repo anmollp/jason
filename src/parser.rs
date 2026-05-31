@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use crate::{JsonError, JsonValue, Position};
 use crate::lexer::{Lexer, SpannedToken, Token};
 
@@ -31,6 +32,24 @@ pub enum ParserError {
     ExpectedCommaOrRightBracket(Position),
     ExpectedCommaOrRightBrace(Position),
     ExpectedStringKey(Position),
+}
+
+impl std::error::Error for ParserError {}
+impl Display for ParserError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParserError::UnexpectedToken(pos) => write!(f, "Unexpected token at {pos}"),
+            ParserError::UnexpectedEndOfInput(pos) => write!(f, "Unexpected EOF at {pos}"),
+            ParserError::InvalidNumber(pos ) => write!(f, "Invalid number at {pos}"),
+            ParserError::UnterminatedString(pos) => write!(f, "Unterminated string at {pos}"),
+            ParserError::TrailingComma(pos) => write!(f, "Trailing comma at {pos}"),
+            ParserError::ExpectedComma(pos) => write!(f, "Expected comma at {pos}"),
+            ParserError::ExpectedColon(pos) => write!(f, "Expected colon at {pos}"),
+            ParserError::ExpectedCommaOrRightBracket(pos) => write!(f, "Expected comma or right bracket at {pos}"),
+            ParserError::ExpectedCommaOrRightBrace(pos) => write!(f, "Expected comma or right brace at {pos}"),
+            ParserError::ExpectedStringKey(pos) => write!(f, "Expected a string key at {pos}")
+        }
+    }
 }
 
 impl Parser {
