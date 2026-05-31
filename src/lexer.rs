@@ -48,31 +48,28 @@ pub enum LexerError {
     LeadingZero(Position)
 }
 
+impl std::error::Error for LexerError {}
+
 impl Display for LexerError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            LexerError::UnexpectedEndOfInput(Position { line, column }) =>
-                write!(f, "Unexpected end of input at line {line}, column {column}"),
+            LexerError::UnexpectedEndOfInput(pos) =>
+                write!(f, "Unexpected end of input at {pos}"),
             LexerError::UnexpectedCharacter{
                 ch,
-                position: Position {line, column}
-            } => write!(f, "Unexpected character '{ch}' at line {line} column {column}"),
-            LexerError::InvalidNumber(Position { line, column }) =>
-                write!(f, "Invalid number at line {line}, column {column}"),
-            LexerError::InvalidUnicodeEscape(Position { line, column}) =>
-                write!(f, "Invalid unicode escape at line {line}, column {column}"),
-            LexerError::UnexpectedLiteral(Position{ line, column}) =>
-                write!(f, "Unexpected literal at line {line}, column {column}"),
-            LexerError::UnterminatedNumber(Position{ line, column}) =>
-                write!(f, "Unterminated number at line {line}, column {column}"),
-            LexerError::UnterminatedString(Position { line, column}) =>
-                write!(f, "Unterminated string at line {line}, column {column}"),
+                position
+            } => write!(f, "Unexpected character '{ch}' at {position}"),
+            LexerError::InvalidNumber(pos) => write!(f, "Invalid number at {pos}"),
+            LexerError::InvalidUnicodeEscape(pos) =>
+                write!(f, "Invalid unicode escape at {pos}"),
+            LexerError::UnexpectedLiteral(pos) => write!(f, "Unexpected literal at {pos}"),
+            LexerError::UnterminatedNumber(pos) => write!(f, "Unterminated number at {pos}"),
+            LexerError::UnterminatedString(pos) => write!(f, "Unterminated string at {pos}"),
             LexerError::InvalidEscapeCharacter {
                 ch,
-                position: Position{ line, column}
-            } => write!(f, "Invalid escape character '{ch}' at line {line}, column {column}"),
-            LexerError::LeadingZero(Position { line, column}) =>
-                write!(f, "Leading zero at line {line}, column {column}"),
+                position
+            } => write!(f, "Invalid escape character '{ch}' at {position}"),
+            LexerError::LeadingZero(pos) => write!(f, "Leading zero at {pos}"),
         }
     }
 }
