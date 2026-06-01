@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use crate::{JsonError, JsonValue, Position};
 use crate::lexer::{Lexer, SpannedToken, Token};
@@ -196,7 +196,7 @@ impl Parser {
     fn parse_object(&mut self) -> Result<JsonValue, JsonError> {
         // Consume opening brace
         self.expect(Token::LeftBrace)?;
-        let mut object = HashMap::new();
+        let mut object = BTreeMap::new();
         // Handle empty object early
         if self.match_token(&Token::RightBrace) {
             return Ok(JsonValue::Object(object))
