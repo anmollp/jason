@@ -1,11 +1,13 @@
 pub mod lexer;
 pub mod parser;
+pub mod serializer;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 pub use parser::parse_from_str;
 use crate::lexer::LexerError;
 use crate::parser::ParserError;
+pub use serializer::to_json_string;
 
 #[derive(Debug, PartialEq)]
 pub enum JsonValue {
@@ -14,7 +16,7 @@ pub enum JsonValue {
     Number(f64),
     String(String),
     Array(Vec<JsonValue>),
-    Object(HashMap<String, JsonValue>)
+    Object(BTreeMap<String, JsonValue>)
 }
 
 #[derive(Debug)]
@@ -133,7 +135,7 @@ mod tests {
     }
 
     mod parser_valid_tests {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
         use crate::{parse_from_str, JsonError, JsonValue};
 
         #[test]
@@ -196,7 +198,7 @@ mod tests {
         #[test]
         fn test_simple_object() -> Result<(), JsonError> {
             let result = parse_from_str("{\"key\": \"value\"}")?;
-            let mut expected = HashMap::new();
+            let mut expected = BTreeMap::new();
             expected.insert("key".to_string(), JsonValue::String("value".to_string()));
             assert_eq!(result, JsonValue::Object(expected));
             Ok(())
@@ -205,7 +207,7 @@ mod tests {
         #[test]
         fn test_multi_field_object() -> Result<(), JsonError> {
             let result = parse_from_str(r#"{"a": 1, "b": true}"#)?;
-            let mut expected = HashMap::new();
+            let mut expected = BTreeMap::new();
             expected.insert("a".to_string(), JsonValue::Number(1.0));
             expected.insert("b".to_string(), JsonValue::Bool(true));
             assert_eq!(result, JsonValue::Object(expected));
@@ -215,8 +217,8 @@ mod tests {
         #[test]
         fn test_nested_object() -> Result<(), JsonError> {
             let result = parse_from_str(r#"{"a": {"b": 2}}"#)?;
-            let mut expected = HashMap::new();
-            let mut expected_nested = HashMap::new();
+            let mut expected = BTreeMap::new();
+            let mut expected_nested = BTreeMap::new();
             expected_nested.insert("b".to_string(), JsonValue::Number(2.0));
             expected.insert("a".to_string(), JsonValue::Object(expected_nested));
             assert_eq!(result, JsonValue::Object(expected));
@@ -226,7 +228,7 @@ mod tests {
         #[test]
         fn test_empty_object() -> Result<(), JsonError> {
             let result = parse_from_str("{}")?;
-            assert_eq!(result, JsonValue::Object(HashMap::new()));
+            assert_eq!(result, JsonValue::Object(BTreeMap::new()));
             Ok(())
         }
 
@@ -253,7 +255,7 @@ mod tests {
         #[test]
         fn test_whitespace() -> Result<(), JsonError> {
             let result = parse_from_str("\n\t { \n \"a\" : [ 1, 2 ] \n }")?;
-            let mut expected = HashMap::new();
+            let mut expected = BTreeMap::new();
             expected.insert("a".to_string(), JsonValue::Array(vec![JsonValue::Number(1.0), JsonValue::Number(2.0)]));
             assert_eq!(result, JsonValue::Object(expected));
             Ok(())
@@ -284,8 +286,8 @@ mod tests {
 
         #[test]
         fn test_mixed_nesting() -> Result<(), JsonError> {
-            let mut map = HashMap::new();
-            let mut inner_map = HashMap::new();
+            let mut map = BTreeMap::new();
+            let mut inner_map = BTreeMap::new();
             inner_map.insert("b".to_string(), JsonValue::Bool(true));
             let array = vec![JsonValue::Number(1.0), JsonValue::Number(2.0), JsonValue::Object(inner_map)];
             map.insert("a".to_string(), JsonValue::Array(array));
@@ -449,7 +451,7 @@ mod tests {
     }
 
     mod integration_tests {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
         use crate::{parse_from_str, JsonError, JsonValue };
 
         #[test]
@@ -470,11 +472,11 @@ mod tests {
 
             let result = parse_from_str(example_json)?;
 
-            let mut prefs = HashMap::new();
+            let mut prefs = BTreeMap::new();
             prefs.insert("theme".into(), JsonValue::String("dark".into()));
             prefs.insert("notifications".into(), JsonValue::String("enabled".into()));
 
-            let mut expected = HashMap::new();
+            let mut expected = BTreeMap::new();
             expected.insert("id".into(), JsonValue::Number(1024.0));
             expected.insert("username".into(), JsonValue::String("jdoe_99".into()));
             expected.insert("email".into(), JsonValue::String("john.doe@example.com".into()));
@@ -491,6 +493,119 @@ mod tests {
             expected.insert("lastLogin".into(), JsonValue::Null);
 
             assert_eq!(result, JsonValue::Object(expected));
+            Ok(())
+        }
+    }
+
+    mod serializer_tests {
+        use crate::JsonValue;
+        use crate::serializer::to_json_string;
+
+        #[test]
+        fn test_serialize_null() {
+            assert_eq!(to_json_string(&JsonValue::Null), "null");
+        }
+
+        #[test]
+        fn test_serialize_bool() {
+            assert_eq!(to_json_string(&JsonValue::Bool(true)), "true");
+            assert_eq!(to_json_string(&JsonValue::Bool(false)), "false");
+        }
+
+        #[test]
+        fn test_serialize_number() {
+            assert_eq!(to_json_string(&JsonValue::Number(123.0)), "123");
+        }
+
+        #[test]
+        fn test_serialize_string() {
+            assert_eq!(
+                to_json_string(&JsonValue::String("quote: \"".to_string())),
+                r#""quote: \"""#
+            );
+            assert_eq!(
+                to_json_string(&JsonValue::String("hello".to_string())),
+                r#""hello""#
+            );
+            assert_eq!(
+                to_json_string(&JsonValue::String("a\nb".to_string())),
+                r#""a\nb""#
+            );
+            assert_eq!(
+                to_json_string(&JsonValue::String("\\".to_string())),
+                r#""\\""#
+            );
+
+        }
+    }
+
+    mod round_trip_tests {
+        use crate::{parse_from_str, JsonError};
+        use crate::serializer::to_json_string;
+
+        #[test]
+        fn test_round_trip_simple_object() -> Result<(), JsonError> {
+            let original = r#"{"a":1,"b":true}"#;
+            let value = parse_from_str(original)?;
+            let serialized = to_json_string(&value);
+            let deserialized = parse_from_str(&serialized)?;
+
+            assert_eq!(value, deserialized);
+            Ok(())
+        }
+
+        #[test]
+        fn test_round_trip_complex_object() -> Result<(), JsonError> {
+            let original = r#"{"a":[1,2,3,{"b":"hello\nworld"}],"c":true}"#;
+            let value = parse_from_str(original)?;
+            let serialized = to_json_string(&value);
+            let deserialized = parse_from_str(&serialized)?;
+
+            assert_eq!(value, deserialized);
+            Ok(())
+        }
+
+        #[test]
+        fn test_round_trip_edge_whitespace_handling() -> Result<(), JsonError> {
+            let original = r#"" { \"a\" : 1 } ""#;
+            let value = parse_from_str(original)?;
+            let serialized = to_json_string(&value);
+            let deserialized = parse_from_str(&serialized)?;
+
+            assert_eq!(value, deserialized);
+            Ok(())
+        }
+
+        #[test]
+        fn test_round_trip_escape_heavy_string() -> Result<(), JsonError> {
+            let original = r#"{"s":"\"\\\n\t"}"#;
+            let value = parse_from_str(original)?;
+            let serialized = to_json_string(&value);
+            let deserialized = parse_from_str(&serialized)?;
+
+            assert_eq!(value, deserialized);
+            Ok(())
+        }
+
+        #[test]
+        fn test_round_trip_deep_nesting() -> Result<(), JsonError> {
+            let original = r#"{"a":[{"b":[{"c":[1,2,3]}]}]}"#;
+            let value = parse_from_str(original)?;
+            let serialized = to_json_string(&value);
+            let deserialized = parse_from_str(&serialized)?;
+
+            assert_eq!(value, deserialized);
+            Ok(())
+        }
+
+        #[test]
+        fn test_round_trip_empt_structure() -> Result<(), JsonError> {
+            let original = r#"[]"#;
+            let value = parse_from_str(original)?;
+            let serialized = to_json_string(&value);
+            let deserialized = parse_from_str(&serialized)?;
+
+            assert_eq!(value, deserialized);
             Ok(())
         }
     }
