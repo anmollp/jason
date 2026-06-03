@@ -84,7 +84,7 @@ impl Lexer {
         }
     }
 
-    fn current_positon(&self) -> Position {
+    pub(crate) fn current_positon(&self) -> Position {
         Position {
             line: self.line,
             column: self.column
@@ -213,12 +213,10 @@ impl Lexer {
             digit_count += 1;
 
             // leading zero check
-            if let Some(ch) = self.peek() {
-                if ch.is_ascii_digit() {
-                    return Err(JsonError::Lexer(
-                        LexerError::LeadingZero(self.current_positon()),
-                    ));
-                }
+            if let Some(ch) = self.peek() && ch.is_ascii_digit() {
+                return Err(JsonError::Lexer(
+                    LexerError::LeadingZero(self.current_positon()),
+                ));
             }
         } else {
                 while let Some(ch) = self.peek() {
@@ -258,31 +256,27 @@ impl Lexer {
         }
 
         // exponent part
-        if let Some(ch) = self.peek() {
-            if ch == 'e' || ch == 'E' {
-                number.push(self.next().unwrap());
+        if let Some(ch) = self.peek() && (ch == 'e' || ch == 'E') {
+            number.push(self.next().unwrap());
 
-                // optional exponent sign
-                if let Some(ch) = self.peek() {
-                    if ch == '+' || ch == '-' {
-                        number.push(self.next().unwrap());
-                    }
-                }
+            // optional exponent sign
+            if let Some(ch) = self.peek() && (ch == '+' || ch == '-') {
+                    number.push(self.next().unwrap());
+            }
 
-                let mut exponent_digits = 0;
-                while let Some(ch) = self.peek() {
-                    if ch.is_ascii_digit() {
-                        exponent_digits += 1;
-                        number.push(self.next().unwrap());
-                    }
-                    else {
-                        break;
-                    }
+            let mut exponent_digits = 0;
+            while let Some(ch) = self.peek() {
+                if ch.is_ascii_digit() {
+                    exponent_digits += 1;
+                    number.push(self.next().unwrap());
                 }
+                else {
+                    break;
+                }
+            }
 
-                if exponent_digits == 0 {
-                    return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())));
-                }
+            if exponent_digits == 0 {
+                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())));
             }
         }
 
@@ -298,10 +292,8 @@ impl Lexer {
                 _ => return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_positon()))),
             }
         }
-        if let Some(ch) = self.peek() {
-            if ch.is_ascii_alphanumeric() || ch == '_' {
-                return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_positon())))
-            }
+        if let Some(ch) = self.peek() && (ch.is_ascii_alphanumeric() || ch == '_') {
+            return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_positon())))
         }
         Ok(())
     }
