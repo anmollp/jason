@@ -1,5 +1,7 @@
 use crate::{JsonError, Position};
 use std::fmt::{Display, Formatter};
+use std::iter::Peekable;
+use std::str::Chars;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -22,9 +24,8 @@ pub struct SpannedToken {
     pub position: Position
 }
 
-pub struct Lexer {
-    chars: Vec<char>,
-    position: usize,
+pub struct Lexer<'a> {
+    chars: Peekable<Chars<'a>>,
     line: usize,
     column: usize
 }
@@ -74,11 +75,10 @@ impl Display for LexerError {
     }
 }
 
-impl Lexer {
-    pub fn new(input: &str) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
         Lexer{
-            chars: input.chars().collect(),
-            position: 0,
+            chars: input.chars().peekable(),
             line: 1,
             column: 1
         }
@@ -91,13 +91,12 @@ impl Lexer {
         }
     }
 
-    fn peek(&self) -> Option<char> {
-        self.chars.get(self.position).copied()
+    fn peek(&mut self) -> Option<char> {
+        self.chars.peek().cloned()
     }
 
     fn next(&mut self) -> Option<char> {
-        let ch = self.peek()?;
-        self.position += 1;
+        let ch = self.chars.next()?;
         if ch == '\n' {
             self.line += 1;
             self.column = 1;

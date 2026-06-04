@@ -9,8 +9,8 @@ pub fn parse_from_str(input: &str) -> Result<JsonValue, JsonError> {
     parser.parse()
 }
 
-pub struct Parser {
-    lexer: Lexer,
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
     current: Option<SpannedToken>,
 }
 
@@ -46,8 +46,8 @@ impl Display for ParserError {
     }
 }
 
-impl Parser {
-    pub fn new(mut lexer: Lexer) -> Result<Self, JsonError> {
+impl<'a> Parser<'a> {
+    pub fn new(mut lexer: Lexer<'a>) -> Result<Self, JsonError> {
         let current = lexer.next_token()?;
         Ok(Self {
             lexer,
