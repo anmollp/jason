@@ -84,7 +84,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub(crate) fn current_positon(&self) -> Position {
+    pub(crate) fn current_position(&self) -> Position {
         Position {
             line: self.line,
             column: self.column
@@ -131,7 +131,7 @@ impl<'a> Lexer<'a> {
             None => return Ok(None),
         };
 
-        let position = self.current_positon();
+        let position = self.current_position();
 
         match ch {
             '{' => {self.next(); Ok(Some(self.make_token(Token::LeftBrace, position))) },
@@ -158,8 +158,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_string(&mut self) -> Result<String, JsonError> {
+        let start = self.current_position();
         let mut string_token = String::new();
-        self.next();
+
+        self.next(); // opening quote
+
         while let Some(ch) = self.next() {
             match ch {
                 '"' => return Ok(string_token),
@@ -170,18 +173,15 @@ impl<'a> Lexer<'a> {
                         Some('\\') => '\\',
                         Some('"') => '"',
                         Some('u') => self.read_unicode_escape()?,
-                        Some(other) => return Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter{ch: other, position: self.current_positon()})),
-                        None => return Err(JsonError::Lexer(LexerError::UnexpectedEndOfInput(self.current_positon())))
+                        Some(other) => return Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter{ch: other, position: self.current_position()})),
+                        None => return Err(JsonError::Lexer(LexerError::UnexpectedEndOfInput(self.current_position())))
                     };
                     string_token.push(escaped);
                 }
                 _ => string_token.push(ch)
             };
         }
-        Err(JsonError::Lexer(LexerError::UnterminatedString(Position{
-            line: self.line,
-            column: self.column
-        })))
+        Err(JsonError::Lexer(LexerError::UnterminatedString(start)))
     }
 
     fn read_unicode_escape(&mut self) -> Result<char, JsonError> {
@@ -189,13 +189,13 @@ impl<'a> Lexer<'a> {
         for _ in 0..4 {
             match self.next() {
                 Some(c) if c.is_ascii_hexdigit() => hex.push(c),
-                _ => return Err(JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_positon())))
+                _ => return Err(JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_position())))
             }
         }
         let code_point = u32::from_str_radix(&hex, 16)
-                .map_err(|_| JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_positon())))?;
+                .map_err(|_| JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_position())))?;
         char::from_u32(code_point)
-            .ok_or(JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_positon())))
+            .ok_or(JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_position())))
     }
 
     fn read_number(&mut self) -> Result<f64, JsonError> {
@@ -214,7 +214,7 @@ impl<'a> Lexer<'a> {
             // leading zero check
             if let Some(ch) = self.peek() && ch.is_ascii_digit() {
                 return Err(JsonError::Lexer(
-                    LexerError::LeadingZero(self.current_positon()),
+                    LexerError::LeadingZero(self.current_position()),
                 ));
             }
         } else {
@@ -231,7 +231,7 @@ impl<'a> Lexer<'a> {
 
         if digit_count == 0 {
             return Err(JsonError::Lexer(
-                LexerError::InvalidNumber(self.current_positon()),
+                LexerError::InvalidNumber(self.current_position()),
             ));
         }
 
@@ -250,7 +250,7 @@ impl<'a> Lexer<'a> {
             }
 
             if frac_digits == 0 {
-                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())));
+                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_position())));
             }
         }
 
@@ -275,24 +275,24 @@ impl<'a> Lexer<'a> {
             }
 
             if exponent_digits == 0 {
-                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())));
+                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_position())));
             }
         }
 
         number
             .parse::<f64>()
-            .map_err(|_| JsonError::Lexer(LexerError::InvalidNumber(self.current_positon())))
+            .map_err(|_| JsonError::Lexer(LexerError::InvalidNumber(self.current_position())))
     }
 
     fn read_literal(&mut self, expected: &str) -> Result<(), JsonError> {
         for expected_char in expected.chars() {
             match self.next() {
                 Some(c) if c == expected_char => {},
-                _ => return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_positon()))),
+                _ => return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_position()))),
             }
         }
         if let Some(ch) = self.peek() && (ch.is_ascii_alphanumeric() || ch == '_') {
-            return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_positon())))
+            return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_position())))
         }
         Ok(())
     }

@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
     }
 
     fn eof_position(&self) -> Position {
-        self.lexer.current_positon()
+        self.lexer.current_position()
     }
 
     fn current_position(&self) -> Position {
