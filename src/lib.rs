@@ -2,12 +2,12 @@ pub mod lexer;
 pub mod parser;
 pub mod serializer;
 
-use std::collections::BTreeMap;
-use std::fmt::{Display, Formatter};
-pub use parser::parse_from_str;
 use crate::lexer::LexerError;
 use crate::parser::ParserError;
+pub use parser::parse_from_str;
 pub use serializer::to_json_string;
+use std::collections::BTreeMap;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, PartialEq)]
 pub enum JsonValue {
@@ -16,13 +16,13 @@ pub enum JsonValue {
     Number(f64),
     String(String),
     Array(Vec<JsonValue>),
-    Object(BTreeMap<String, JsonValue>)
+    Object(BTreeMap<String, JsonValue>),
 }
 
 #[derive(Debug)]
 pub enum JsonError {
     Lexer(LexerError),
-    Parser(ParserError)
+    Parser(ParserError),
 }
 
 impl std::error::Error for JsonError {}
@@ -30,7 +30,7 @@ impl Display for JsonError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             JsonError::Lexer(err) => write!(f, "{err}"),
-            JsonError::Parser(err) => write!(f, "{err}")
+            JsonError::Parser(err) => write!(f, "{err}"),
         }
     }
 }
@@ -51,20 +51,20 @@ impl Display for Position {
 mod tests {
 
     mod lexer_invalid_tests {
-        use crate::{parse_from_str, JsonError, JsonValue };
         use crate::lexer::LexerError;
+        use crate::{JsonError, JsonValue, parse_from_str};
 
         fn assert_invalid_literal(result: Result<JsonValue, JsonError>) {
             match result {
-                Err(JsonError::Lexer(LexerError::UnexpectedLiteral(_))) => {},
-                _ => panic!("Expected a literal true/false/null")
+                Err(JsonError::Lexer(LexerError::UnexpectedLiteral(_))) => {}
+                _ => panic!("Expected a literal true/false/null"),
             }
         }
 
         fn assert_invalid_number(result: Result<JsonValue, JsonError>) {
             match result {
-                Err(JsonError::Lexer(LexerError::InvalidNumber(_))) => {},
-                _ => panic!("expected invalid number error")
+                Err(JsonError::Lexer(LexerError::InvalidNumber(_))) => {}
+                _ => panic!("expected invalid number error"),
             }
         }
 
@@ -79,8 +79,8 @@ mod tests {
             let result = parse_from_str("\"olleh");
             println!("{:?}", result);
             match result {
-                Err(JsonError::Lexer(LexerError::UnterminatedString(_))) => {},
-                _ => panic!("expected unterminated string error")
+                Err(JsonError::Lexer(LexerError::UnterminatedString(_))) => {}
+                _ => panic!("expected unterminated string error"),
             }
         }
 
@@ -88,8 +88,8 @@ mod tests {
         fn test_invalid_numbers() {
             let result1 = parse_from_str("01");
             match result1 {
-                Err(JsonError::Lexer(LexerError::LeadingZero(_))) => {},
-                _ => panic!("expected leading zero error")
+                Err(JsonError::Lexer(LexerError::LeadingZero(_))) => {}
+                _ => panic!("expected leading zero error"),
             }
             let result2 = parse_from_str("1.");
             assert_invalid_number(result2);
@@ -97,8 +97,8 @@ mod tests {
             assert_invalid_number(result3);
             let result4 = parse_from_str(".");
             match result4 {
-                Err(JsonError::Lexer(LexerError::UnexpectedCharacter { ch: _, position: _ })) => {},
-                _ => panic!("expected unexpected character error")
+                Err(JsonError::Lexer(LexerError::UnexpectedCharacter { ch: _, position: _ })) => {}
+                _ => panic!("expected unexpected character error"),
             }
         }
 
@@ -106,8 +106,11 @@ mod tests {
         fn test_invalid_escaped_string() {
             let result = parse_from_str(r#""\q""#);
             match result {
-                Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter{ ch: _, position: _})) => {},
-                _ => panic!("expected invalid escape character")
+                Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter {
+                    ch: _,
+                    position: _,
+                })) => {}
+                _ => panic!("expected invalid escape character"),
             }
         }
 
@@ -135,8 +138,8 @@ mod tests {
     }
 
     mod parser_valid_tests {
+        use crate::{JsonError, JsonValue, parse_from_str};
         use std::collections::BTreeMap;
-        use crate::{parse_from_str, JsonError, JsonValue};
 
         #[test]
         fn test_parse_integer() -> Result<(), JsonError> {
@@ -154,37 +157,42 @@ mod tests {
         #[test]
         fn test_parse_array() -> Result<(), JsonError> {
             let result = parse_from_str("[1, 2, 3]")?;
-            assert_eq!(result, JsonValue::Array(vec![
-                JsonValue::Number(1.0),
-                JsonValue::Number(2.0),
-                JsonValue::Number(3.0),
-            ]
-            ));
+            assert_eq!(
+                result,
+                JsonValue::Array(vec![
+                    JsonValue::Number(1.0),
+                    JsonValue::Number(2.0),
+                    JsonValue::Number(3.0),
+                ])
+            );
             Ok(())
         }
 
         #[test]
         fn test_polymorphic_array() -> Result<(), JsonError> {
             let result = parse_from_str("[3, true, \"Hello\"]")?;
-            assert_eq!(result, JsonValue::Array(vec![
-                JsonValue::Number(3.0),
-                JsonValue::Bool(true),
-                JsonValue::String(String::from("Hello"))
-            ]));
+            assert_eq!(
+                result,
+                JsonValue::Array(vec![
+                    JsonValue::Number(3.0),
+                    JsonValue::Bool(true),
+                    JsonValue::String(String::from("Hello"))
+                ])
+            );
             Ok(())
         }
 
         #[test]
         fn test_nested_array() -> Result<(), JsonError> {
             let result = parse_from_str("[1, [2, 3], 4]")?;
-            assert_eq!(result, JsonValue::Array(vec![
-                JsonValue::Number(1.0),
+            assert_eq!(
+                result,
                 JsonValue::Array(vec![
-                    JsonValue::Number(2.0),
-                    JsonValue::Number(3.0)
-                ]),
-                JsonValue::Number(4.0)
-            ]));
+                    JsonValue::Number(1.0),
+                    JsonValue::Array(vec![JsonValue::Number(2.0), JsonValue::Number(3.0)]),
+                    JsonValue::Number(4.0)
+                ])
+            );
             Ok(())
         }
 
@@ -256,7 +264,10 @@ mod tests {
         fn test_whitespace() -> Result<(), JsonError> {
             let result = parse_from_str("\n\t { \n \"a\" : [ 1, 2 ] \n }")?;
             let mut expected = BTreeMap::new();
-            expected.insert("a".to_string(), JsonValue::Array(vec![JsonValue::Number(1.0), JsonValue::Number(2.0)]));
+            expected.insert(
+                "a".to_string(),
+                JsonValue::Array(vec![JsonValue::Number(1.0), JsonValue::Number(2.0)]),
+            );
             assert_eq!(result, JsonValue::Object(expected));
             Ok(())
         }
@@ -289,14 +300,22 @@ mod tests {
             let mut map = BTreeMap::new();
             let mut inner_map = BTreeMap::new();
             inner_map.insert("b".to_string(), JsonValue::Bool(true));
-            let array = vec![JsonValue::Number(1.0), JsonValue::Number(2.0), JsonValue::Object(inner_map)];
+            let array = vec![
+                JsonValue::Number(1.0),
+                JsonValue::Number(2.0),
+                JsonValue::Object(inner_map),
+            ];
             map.insert("a".to_string(), JsonValue::Array(array));
             let expected = JsonValue::Object(map);
-            assert_eq!(parse_from_str(r#"
+            assert_eq!(
+                parse_from_str(
+                    r#"
             {
                 "a": [1, 2, {"b": true}]
-            }"#)?,
-            expected);
+            }"#
+                )?,
+                expected
+            );
             Ok(())
         }
 
@@ -312,27 +331,27 @@ mod tests {
     }
 
     mod parser_invalid_tests {
-        use crate::{parse_from_str, JsonError, JsonValue};
         use crate::parser::ParserError;
+        use crate::{JsonError, JsonValue, parse_from_str};
 
         fn assert_unexpected_eof(result: Result<JsonValue, JsonError>) {
             match result {
-                Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(_))) => {},
-                _ => panic!("expected EOF error")
+                Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(_))) => {}
+                _ => panic!("expected EOF error"),
             }
         }
 
         fn assert_unexpected_token(result: Result<JsonValue, JsonError>) {
             match result {
-                Err(JsonError::Parser(ParserError::UnexpectedToken(_))) => {},
-                _ => panic!("expected unexpected token error")
+                Err(JsonError::Parser(ParserError::UnexpectedToken(_))) => {}
+                _ => panic!("expected unexpected token error"),
             }
         }
 
         fn assert_expected_string_key(result: Result<JsonValue, JsonError>) {
             match result {
-                Err(JsonError::Parser(ParserError::ExpectedStringKey(_))) => {},
-                _ => panic!("expected string key error")
+                Err(JsonError::Parser(ParserError::ExpectedStringKey(_))) => {}
+                _ => panic!("expected string key error"),
             }
         }
 
@@ -341,8 +360,8 @@ mod tests {
             let result = parse_from_str("[1, 2");
             println!("{:?}", result);
             match result {
-                Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBracket(_))) => {},
-                _ => panic!("expected a , or ] error")
+                Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBracket(_))) => {}
+                _ => panic!("expected a , or ] error"),
             }
         }
 
@@ -356,13 +375,13 @@ mod tests {
         fn test_trailing_comma() {
             let result = parse_from_str("[1, 2,]");
             match result {
-                Err(JsonError::Parser(ParserError::TrailingComma(_))) => {},
-                _ => panic!("expected trailing comma error")
+                Err(JsonError::Parser(ParserError::TrailingComma(_))) => {}
+                _ => panic!("expected trailing comma error"),
             }
             let result = parse_from_str("{\"a\": false,}");
             match result {
-                Err(JsonError::Parser(ParserError::TrailingComma(_))) => {},
-                _ => panic!("expected trailing comma error")
+                Err(JsonError::Parser(ParserError::TrailingComma(_))) => {}
+                _ => panic!("expected trailing comma error"),
             }
         }
 
@@ -370,8 +389,8 @@ mod tests {
         fn test_unexpected_token() {
             let result = parse_from_str("{true: 1}");
             match result {
-                Err(JsonError::Parser(ParserError::ExpectedStringKey(_))) => {},
-                _ => panic!("expected string key error")
+                Err(JsonError::Parser(ParserError::ExpectedStringKey(_))) => {}
+                _ => panic!("expected string key error"),
             }
         }
 
@@ -451,8 +470,8 @@ mod tests {
     }
 
     mod integration_tests {
+        use crate::{JsonError, JsonValue, parse_from_str};
         use std::collections::BTreeMap;
-        use crate::{parse_from_str, JsonError, JsonValue };
 
         #[test]
         fn test_parse_json() -> Result<(), JsonError> {
@@ -479,7 +498,10 @@ mod tests {
             let mut expected = BTreeMap::new();
             expected.insert("id".into(), JsonValue::Number(1024.0));
             expected.insert("username".into(), JsonValue::String("jdoe_99".into()));
-            expected.insert("email".into(), JsonValue::String("john.doe@example.com".into()));
+            expected.insert(
+                "email".into(),
+                JsonValue::String("john.doe@example.com".into()),
+            );
             expected.insert("isActive".into(), JsonValue::Bool(true));
             expected.insert(
                 "roles".into(),
@@ -535,13 +557,12 @@ mod tests {
                 to_json_string(&JsonValue::String("\\".to_string())),
                 r#""\\""#
             );
-
         }
     }
 
     mod round_trip_tests {
-        use crate::{parse_from_str, JsonError};
         use crate::serializer::to_json_string;
+        use crate::{JsonError, parse_from_str};
 
         #[test]
         fn test_round_trip_simple_object() -> Result<(), JsonError> {
@@ -607,6 +628,39 @@ mod tests {
 
             assert_eq!(value, deserialized);
             Ok(())
+        }
+    }
+
+    mod pretty_print_tests {
+        use crate::JsonValue;
+        use crate::serializer::to_pretty_string;
+        use std::collections::BTreeMap;
+
+        #[test]
+        fn test_nested_array() {
+            let json_value = JsonValue::Array(vec![JsonValue::Array(vec![
+                JsonValue::Number(1.0),
+                JsonValue::Array(vec![
+                    JsonValue::Number(2.0),
+                    JsonValue::String("Hi".to_string()),
+                ]),
+            ])]);
+            println!("{}", to_pretty_string(&json_value));
+        }
+
+        #[test]
+        fn test_nested_object() {
+            let mut map = BTreeMap::new();
+            let mut inner_map = BTreeMap::new();
+            inner_map.insert("b".to_string(), JsonValue::Bool(true));
+            let array = vec![
+                JsonValue::Number(1.0),
+                JsonValue::Number(2.0),
+                JsonValue::Object(inner_map),
+            ];
+            map.insert("a".to_string(), JsonValue::Array(array));
+            let obj_json_value = JsonValue::Object(map);
+            println!("{}", to_pretty_string(&obj_json_value));
         }
     }
 }

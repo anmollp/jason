@@ -15,38 +15,32 @@ pub enum Token {
     Number(f64),
     True,
     False,
-    Null
+    Null,
 }
 
 #[derive(Debug, Clone)]
 pub struct SpannedToken {
     pub token: Token,
-    pub position: Position
+    pub position: Position,
 }
 
 pub struct Lexer<'a> {
     chars: Peekable<Chars<'a>>,
     line: usize,
-    column: usize
+    column: usize,
 }
 
 #[derive(Debug)]
 pub enum LexerError {
-    UnexpectedCharacter {
-        ch: char,
-        position: Position
-    },
-    UnterminatedString (Position),
-    InvalidNumber (Position),
-    UnexpectedLiteral (Position),
-    UnterminatedNumber (Position),
-    InvalidUnicodeEscape (Position),
-    UnexpectedEndOfInput (Position),
-    InvalidEscapeCharacter {
-        ch: char,
-        position: Position
-    },
-    LeadingZero(Position)
+    UnexpectedCharacter { ch: char, position: Position },
+    UnterminatedString(Position),
+    InvalidNumber(Position),
+    UnexpectedLiteral(Position),
+    UnterminatedNumber(Position),
+    InvalidUnicodeEscape(Position),
+    UnexpectedEndOfInput(Position),
+    InvalidEscapeCharacter { ch: char, position: Position },
+    LeadingZero(Position),
 }
 
 impl std::error::Error for LexerError {}
@@ -54,22 +48,18 @@ impl std::error::Error for LexerError {}
 impl Display for LexerError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            LexerError::UnexpectedEndOfInput(pos) =>
-                write!(f, "Unexpected end of input at {pos}"),
-            LexerError::UnexpectedCharacter{
-                ch,
-                position
-            } => write!(f, "Unexpected character '{ch}' at {position}"),
+            LexerError::UnexpectedEndOfInput(pos) => write!(f, "Unexpected end of input at {pos}"),
+            LexerError::UnexpectedCharacter { ch, position } => {
+                write!(f, "Unexpected character '{ch}' at {position}")
+            }
             LexerError::InvalidNumber(pos) => write!(f, "Invalid number at {pos}"),
-            LexerError::InvalidUnicodeEscape(pos) =>
-                write!(f, "Invalid unicode escape at {pos}"),
+            LexerError::InvalidUnicodeEscape(pos) => write!(f, "Invalid unicode escape at {pos}"),
             LexerError::UnexpectedLiteral(pos) => write!(f, "Unexpected literal at {pos}"),
             LexerError::UnterminatedNumber(pos) => write!(f, "Unterminated number at {pos}"),
             LexerError::UnterminatedString(pos) => write!(f, "Unterminated string at {pos}"),
-            LexerError::InvalidEscapeCharacter {
-                ch,
-                position
-            } => write!(f, "Invalid escape character '{ch}' at {position}"),
+            LexerError::InvalidEscapeCharacter { ch, position } => {
+                write!(f, "Invalid escape character '{ch}' at {position}")
+            }
             LexerError::LeadingZero(pos) => write!(f, "Leading zero at {pos}"),
         }
     }
@@ -77,17 +67,17 @@ impl Display for LexerError {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
-        Lexer{
+        Lexer {
             chars: input.chars().peekable(),
             line: 1,
-            column: 1
+            column: 1,
         }
     }
 
     pub(crate) fn current_position(&self) -> Position {
         Position {
             line: self.line,
-            column: self.column
+            column: self.column,
         }
     }
 
@@ -110,18 +100,14 @@ impl<'a> Lexer<'a> {
         while let Some(ch) = self.peek() {
             if ch.is_whitespace() {
                 self.next();
-            }
-            else {
+            } else {
                 break;
             }
         }
     }
 
-    fn make_token(&self, token:Token, position: Position) -> SpannedToken {
-        SpannedToken {
-            token,
-            position
-        }
+    fn make_token(&self, token: Token, position: Position) -> SpannedToken {
+        SpannedToken { token, position }
     }
 
     pub fn next_token(&mut self) -> Result<Option<SpannedToken>, JsonError> {
@@ -134,26 +120,54 @@ impl<'a> Lexer<'a> {
         let position = self.current_position();
 
         match ch {
-            '{' => {self.next(); Ok(Some(self.make_token(Token::LeftBrace, position))) },
-            '}' => {self.next(); Ok(Some(self.make_token(Token::RightBrace, position))) },
-            '[' => {self.next(); Ok(Some(self.make_token(Token::LeftBracket, position))) },
-            ']' => {self.next(); Ok(Some(self.make_token(Token::RightBracket, position)))},
-            ':' => {self.next(); Ok(Some(self.make_token(Token::Colon, position)))},
-            ',' => {self.next(); Ok(Some(self.make_token(Token::Comma, position)))},
-            '"' => { let string = self.read_string()?;
+            '{' => {
+                self.next();
+                Ok(Some(self.make_token(Token::LeftBrace, position)))
+            }
+            '}' => {
+                self.next();
+                Ok(Some(self.make_token(Token::RightBrace, position)))
+            }
+            '[' => {
+                self.next();
+                Ok(Some(self.make_token(Token::LeftBracket, position)))
+            }
+            ']' => {
+                self.next();
+                Ok(Some(self.make_token(Token::RightBracket, position)))
+            }
+            ':' => {
+                self.next();
+                Ok(Some(self.make_token(Token::Colon, position)))
+            }
+            ',' => {
+                self.next();
+                Ok(Some(self.make_token(Token::Comma, position)))
+            }
+            '"' => {
+                let string = self.read_string()?;
                 Ok(Some(self.make_token(Token::String(string), position)))
-            },
-            't' => {self.read_literal("true")?; Ok(Some(self.make_token(Token::True, position)))},
-            'f' => {self.read_literal("false")?; Ok(Some(self.make_token(Token::False, position)))},
-            'n' => {self.read_literal("null")?; Ok(Some(self.make_token(Token::Null, position)))},
+            }
+            't' => {
+                self.read_literal("true")?;
+                Ok(Some(self.make_token(Token::True, position)))
+            }
+            'f' => {
+                self.read_literal("false")?;
+                Ok(Some(self.make_token(Token::False, position)))
+            }
+            'n' => {
+                self.read_literal("null")?;
+                Ok(Some(self.make_token(Token::Null, position)))
+            }
             c if c.is_ascii_digit() || c == '-' => {
                 let number = self.read_number()?;
                 Ok(Some(self.make_token(Token::Number(number), position)))
-            },
-            _ => Err(JsonError::Lexer(LexerError::UnexpectedCharacter{
+            }
+            _ => Err(JsonError::Lexer(LexerError::UnexpectedCharacter {
                 ch,
                 position,
-        })),
+            })),
         }
     }
 
@@ -173,12 +187,21 @@ impl<'a> Lexer<'a> {
                         Some('\\') => '\\',
                         Some('"') => '"',
                         Some('u') => self.read_unicode_escape()?,
-                        Some(other) => return Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter{ch: other, position: self.current_position()})),
-                        None => return Err(JsonError::Lexer(LexerError::UnexpectedEndOfInput(self.current_position())))
+                        Some(other) => {
+                            return Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter {
+                                ch: other,
+                                position: self.current_position(),
+                            }));
+                        }
+                        None => {
+                            return Err(JsonError::Lexer(LexerError::UnexpectedEndOfInput(
+                                self.current_position(),
+                            )));
+                        }
                     };
                     string_token.push(escaped);
                 }
-                _ => string_token.push(ch)
+                _ => string_token.push(ch),
             };
         }
         Err(JsonError::Lexer(LexerError::UnterminatedString(start)))
@@ -189,13 +212,19 @@ impl<'a> Lexer<'a> {
         for _ in 0..4 {
             match self.next() {
                 Some(c) if c.is_ascii_hexdigit() => hex.push(c),
-                _ => return Err(JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_position())))
+                _ => {
+                    return Err(JsonError::Lexer(LexerError::InvalidUnicodeEscape(
+                        self.current_position(),
+                    )));
+                }
             }
         }
-        let code_point = u32::from_str_radix(&hex, 16)
-                .map_err(|_| JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_position())))?;
-        char::from_u32(code_point)
-            .ok_or(JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_position())))
+        let code_point = u32::from_str_radix(&hex, 16).map_err(|_| {
+            JsonError::Lexer(LexerError::InvalidUnicodeEscape(self.current_position()))
+        })?;
+        char::from_u32(code_point).ok_or(JsonError::Lexer(LexerError::InvalidUnicodeEscape(
+            self.current_position(),
+        )))
     }
 
     fn read_number(&mut self) -> Result<f64, JsonError> {
@@ -212,27 +241,28 @@ impl<'a> Lexer<'a> {
             digit_count += 1;
 
             // leading zero check
-            if let Some(ch) = self.peek() && ch.is_ascii_digit() {
-                return Err(JsonError::Lexer(
-                    LexerError::LeadingZero(self.current_position()),
-                ));
+            if let Some(ch) = self.peek()
+                && ch.is_ascii_digit()
+            {
+                return Err(JsonError::Lexer(LexerError::LeadingZero(
+                    self.current_position(),
+                )));
             }
         } else {
-                while let Some(ch) = self.peek() {
-                    if ch.is_ascii_digit() {
-                        digit_count += 1;
-                        number.push(self.next().unwrap());
-                    }
-                    else {
-                        break;
-                    }
+            while let Some(ch) = self.peek() {
+                if ch.is_ascii_digit() {
+                    digit_count += 1;
+                    number.push(self.next().unwrap());
+                } else {
+                    break;
                 }
             }
+        }
 
         if digit_count == 0 {
-            return Err(JsonError::Lexer(
-                LexerError::InvalidNumber(self.current_position()),
-            ));
+            return Err(JsonError::Lexer(LexerError::InvalidNumber(
+                self.current_position(),
+            )));
         }
 
         // fractional part
@@ -250,17 +280,23 @@ impl<'a> Lexer<'a> {
             }
 
             if frac_digits == 0 {
-                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_position())));
+                return Err(JsonError::Lexer(LexerError::InvalidNumber(
+                    self.current_position(),
+                )));
             }
         }
 
         // exponent part
-        if let Some(ch) = self.peek() && (ch == 'e' || ch == 'E') {
+        if let Some(ch) = self.peek()
+            && (ch == 'e' || ch == 'E')
+        {
             number.push(self.next().unwrap());
 
             // optional exponent sign
-            if let Some(ch) = self.peek() && (ch == '+' || ch == '-') {
-                    number.push(self.next().unwrap());
+            if let Some(ch) = self.peek()
+                && (ch == '+' || ch == '-')
+            {
+                number.push(self.next().unwrap());
             }
 
             let mut exponent_digits = 0;
@@ -268,14 +304,15 @@ impl<'a> Lexer<'a> {
                 if ch.is_ascii_digit() {
                     exponent_digits += 1;
                     number.push(self.next().unwrap());
-                }
-                else {
+                } else {
                     break;
                 }
             }
 
             if exponent_digits == 0 {
-                return Err(JsonError::Lexer(LexerError::InvalidNumber(self.current_position())));
+                return Err(JsonError::Lexer(LexerError::InvalidNumber(
+                    self.current_position(),
+                )));
             }
         }
 
@@ -287,12 +324,20 @@ impl<'a> Lexer<'a> {
     fn read_literal(&mut self, expected: &str) -> Result<(), JsonError> {
         for expected_char in expected.chars() {
             match self.next() {
-                Some(c) if c == expected_char => {},
-                _ => return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_position()))),
+                Some(c) if c == expected_char => {}
+                _ => {
+                    return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(
+                        self.current_position(),
+                    )));
+                }
             }
         }
-        if let Some(ch) = self.peek() && (ch.is_ascii_alphanumeric() || ch == '_') {
-            return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(self.current_position())))
+        if let Some(ch) = self.peek()
+            && (ch.is_ascii_alphanumeric() || ch == '_')
+        {
+            return Err(JsonError::Lexer(LexerError::UnexpectedLiteral(
+                self.current_position(),
+            )));
         }
         Ok(())
     }
