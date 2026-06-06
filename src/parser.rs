@@ -1,7 +1,7 @@
+use crate::lexer::{Lexer, SpannedToken, Token};
+use crate::{JsonError, JsonValue, Position};
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
-use crate::{JsonError, JsonValue, Position};
-use crate::lexer::{Lexer, SpannedToken, Token};
 
 pub fn parse_from_str(input: &str) -> Result<JsonValue, JsonError> {
     let lexer = Lexer::new(input);
@@ -34,14 +34,18 @@ impl Display for ParserError {
         match self {
             ParserError::UnexpectedToken(pos) => write!(f, "Unexpected token at {pos}"),
             ParserError::UnexpectedEndOfInput(pos) => write!(f, "Unexpected EOF at {pos}"),
-            ParserError::InvalidNumber(pos ) => write!(f, "Invalid number at {pos}"),
+            ParserError::InvalidNumber(pos) => write!(f, "Invalid number at {pos}"),
             ParserError::UnterminatedString(pos) => write!(f, "Unterminated string at {pos}"),
             ParserError::TrailingComma(pos) => write!(f, "Trailing comma at {pos}"),
             ParserError::ExpectedComma(pos) => write!(f, "Expected comma at {pos}"),
             ParserError::ExpectedColon(pos) => write!(f, "Expected colon at {pos}"),
-            ParserError::ExpectedCommaOrRightBracket(pos) => write!(f, "Expected comma or right bracket at {pos}"),
-            ParserError::ExpectedCommaOrRightBrace(pos) => write!(f, "Expected comma or right brace at {pos}"),
-            ParserError::ExpectedStringKey(pos) => write!(f, "Expected a string key at {pos}")
+            ParserError::ExpectedCommaOrRightBracket(pos) => {
+                write!(f, "Expected comma or right bracket at {pos}")
+            }
+            ParserError::ExpectedCommaOrRightBrace(pos) => {
+                write!(f, "Expected comma or right brace at {pos}")
+            }
+            ParserError::ExpectedStringKey(pos) => write!(f, "Expected a string key at {pos}"),
         }
     }
 }
@@ -49,16 +53,15 @@ impl Display for ParserError {
 impl<'a> Parser<'a> {
     pub fn new(mut lexer: Lexer<'a>) -> Result<Self, JsonError> {
         let current = lexer.next_token()?;
-        Ok(Self {
-            lexer,
-            current
-        })
+        Ok(Self { lexer, current })
     }
     fn parse(&mut self) -> Result<JsonValue, JsonError> {
         let value = self.parse_value()?;
         if self.current_token().is_some() {
             let token = self.current_token().unwrap();
-            return Err(JsonError::Parser(ParserError::UnexpectedToken(token.position)))
+            return Err(JsonError::Parser(ParserError::UnexpectedToken(
+                token.position,
+            )));
         }
         Ok(value)
     }
@@ -74,12 +77,15 @@ impl<'a> Parser<'a> {
             Ok(())
         } else {
             match self.current_token() {
-                Some(token) => Err(JsonError::Parser(ParserError::UnexpectedToken(token.position))),
-                None => Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(self.eof_position())))
+                Some(token) => Err(JsonError::Parser(ParserError::UnexpectedToken(
+                    token.position,
+                ))),
+                None => Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(
+                    self.eof_position(),
+                ))),
             }
         }
     }
-
 
     fn check(&self, token: &Token) -> bool {
         self.current.as_ref().map(|t| &t.token) == Some(token)
@@ -88,7 +94,7 @@ impl<'a> Parser<'a> {
     fn match_token(&mut self, token: &Token) -> Result<bool, JsonError> {
         if self.check(token) {
             self.advance()?;
-            return Ok(true)
+            return Ok(true);
         }
         Ok(false)
     }
@@ -104,7 +110,7 @@ impl<'a> Parser<'a> {
     fn current_position(&self) -> Position {
         match self.current_token() {
             Some(token) => token.position,
-            None => self.eof_position()
+            None => self.eof_position(),
         }
     }
 
@@ -112,9 +118,9 @@ impl<'a> Parser<'a> {
         let token = match self.current_token() {
             Some(t) => t.clone(),
             None => {
-                return Err(JsonError::Parser(
-                    ParserError::UnexpectedEndOfInput(self.current_position()),
-                ))
+                return Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(
+                    self.current_position(),
+                )));
             }
         };
 
@@ -122,27 +128,29 @@ impl<'a> Parser<'a> {
             Token::Null => {
                 self.advance()?;
                 Ok(JsonValue::Null)
-            },
+            }
             Token::True => {
                 self.advance()?;
                 Ok(JsonValue::Bool(true))
-            },
+            }
             Token::False => {
                 self.advance()?;
                 Ok(JsonValue::Bool(false))
-            },
+            }
             Token::Number(n) => {
                 self.advance()?;
                 Ok(JsonValue::Number(n))
-            },
+            }
             Token::String(s) => {
                 self.advance()?;
                 Ok(JsonValue::String(s))
-            },
+            }
             Token::LeftBracket => self.parse_array(),
             Token::LeftBrace => self.parse_object(),
-            _ => Err(JsonError::Parser(ParserError::UnexpectedToken(token.position))),
-            }
+            _ => Err(JsonError::Parser(ParserError::UnexpectedToken(
+                token.position,
+            ))),
+        }
     }
 
     fn parse_array(&mut self) -> Result<JsonValue, JsonError> {
@@ -161,7 +169,9 @@ impl<'a> Parser<'a> {
             if self.match_token(&Token::Comma)? {
                 // Check trailing comma
                 if self.check(&Token::RightBracket) {
-                    return Err(JsonError::Parser(ParserError::TrailingComma(self.current_position())))
+                    return Err(JsonError::Parser(ParserError::TrailingComma(
+                        self.current_position(),
+                    )));
                 }
                 continue;
             }
@@ -170,7 +180,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             // Otherwise Error
-            return Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBracket(self.current_position())))
+            return Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBracket(
+                self.current_position(),
+            )));
         }
         // return array
         Ok(JsonValue::Array(array))
@@ -182,18 +194,13 @@ impl<'a> Parser<'a> {
         let mut object = BTreeMap::new();
         // Handle empty object early
         if self.match_token(&Token::RightBrace)? {
-            return Ok(JsonValue::Object(object))
+            return Ok(JsonValue::Object(object));
         }
 
         loop {
-            let key_token = self.advance()?
-                .ok_or_else(|| {
-                    JsonError::Parser(
-                        ParserError::UnexpectedEndOfInput(
-                            self.current_position()
-                        )
-                    )
-                })?;
+            let key_token = self.advance()?.ok_or_else(|| {
+                JsonError::Parser(ParserError::UnexpectedEndOfInput(self.current_position()))
+            })?;
 
             return match key_token.token {
                 Token::String(s) => {
@@ -206,7 +213,9 @@ impl<'a> Parser<'a> {
                     if self.match_token(&Token::Comma)? {
                         // Check trailing comma
                         if self.check(&Token::RightBrace) {
-                            return Err(JsonError::Parser(ParserError::TrailingComma(self.current_position())))
+                            return Err(JsonError::Parser(ParserError::TrailingComma(
+                                self.current_position(),
+                            )));
                         }
                         continue;
                     }
@@ -215,10 +224,14 @@ impl<'a> Parser<'a> {
                         break;
                     }
                     // Otherwise error
-                    Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBrace(self.current_position())))
+                    Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBrace(
+                        self.current_position(),
+                    )))
                 }
-                _ => Err(JsonError::Parser(ParserError::ExpectedStringKey(key_token.position)))
-            }
+                _ => Err(JsonError::Parser(ParserError::ExpectedStringKey(
+                    key_token.position,
+                ))),
+            };
         }
         Ok(JsonValue::Object(object))
     }
