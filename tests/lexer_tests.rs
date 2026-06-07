@@ -1,7 +1,7 @@
 use jason::JsonError;
+use jason::JsonValue;
 use jason::LexerError;
 use jason::parse_from_str;
-use jason::JsonValue;
 
 fn assert_invalid_literal(result: Result<JsonValue, JsonError>) {
     match result {
