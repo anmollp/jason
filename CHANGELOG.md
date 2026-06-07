@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.0
+- Added JSON Pointer traversal API.
+- Support for object and array navigation.
+- Support for root document lookup.
+- Support for RFC 6901 escape sequences (~0, ~1).
+- Added comprehensive pointer test coverage.
+
 ## v1.2.0
 - Iterator-based lexer architecture using Peekable<Chars<'a>>.
 - Byte-position tracking to support efficient string slicing.

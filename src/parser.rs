@@ -231,4 +231,3 @@ impl<'a> Parser<'a> {
         Ok(JsonValue::Object(object))
     }
 }
-

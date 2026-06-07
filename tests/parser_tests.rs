@@ -1,8 +1,7 @@
-
 use jason::JsonError;
 use jason::JsonValue;
-use jason::parse_from_str;
 use jason::ParserError;
+use jason::parse_from_str;
 use std::collections::BTreeMap;
 
 // API-level integration test
