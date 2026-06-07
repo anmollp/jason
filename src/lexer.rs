@@ -1,3 +1,4 @@
+use crate::lexer::LexerError::UnterminatedString;
 use crate::{JsonError, Position};
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
@@ -25,9 +26,16 @@ pub struct SpannedToken {
 }
 
 pub struct Lexer<'a> {
+    input: &'a str,
     chars: Peekable<Chars<'a>>,
+    byte_pos: usize,
     line: usize,
     column: usize,
+}
+
+enum JsonString<'a> {
+    Borrowed(&'a str),
+    Owned(String),
 }
 
 #[derive(Debug)]
@@ -68,7 +76,9 @@ impl Display for LexerError {
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Lexer {
+            input,
             chars: input.chars().peekable(),
+            byte_pos: 0,
             line: 1,
             column: 1,
         }
@@ -87,6 +97,7 @@ impl<'a> Lexer<'a> {
 
     fn next(&mut self) -> Option<char> {
         let ch = self.chars.next()?;
+        self.byte_pos += ch.len_utf8();
         if ch == '\n' {
             self.line += 1;
             self.column = 1;
@@ -146,7 +157,11 @@ impl<'a> Lexer<'a> {
             }
             '"' => {
                 let string = self.read_string()?;
-                Ok(Some(self.make_token(Token::String(string), position)))
+                let owned = match string {
+                    JsonString::Borrowed(s) => s.to_string(),
+                    JsonString::Owned(s) => s,
+                };
+                Ok(Some(self.make_token(Token::String(owned), position)))
             }
             't' => {
                 self.read_literal("true")?;
@@ -171,40 +186,68 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn read_string(&mut self) -> Result<String, JsonError> {
-        let start = self.current_position();
-        let mut string_token = String::new();
-
-        self.next(); // opening quote
-
-        while let Some(ch) = self.next() {
-            match ch {
-                '"' => return Ok(string_token),
-                '\\' => {
-                    let escaped = match self.next() {
-                        Some('n') => '\n',
-                        Some('t') => '\t',
-                        Some('\\') => '\\',
-                        Some('"') => '"',
-                        Some('u') => self.read_unicode_escape()?,
-                        Some(other) => {
-                            return Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter {
-                                ch: other,
-                                position: self.current_position(),
-                            }));
-                        }
-                        None => {
-                            return Err(JsonError::Lexer(LexerError::UnexpectedEndOfInput(
-                                self.current_position(),
-                            )));
-                        }
-                    };
-                    string_token.push(escaped);
-                }
-                _ => string_token.push(ch),
-            };
+    fn read_escape(&mut self) -> Result<char, JsonError> {
+        match self.next() {
+            Some('n') => Ok('\n'),
+            Some('t') => Ok('\t'),
+            Some('\\') => Ok('\\'),
+            Some('"') => Ok('"'),
+            Some('u') => self.read_unicode_escape(),
+            Some(other) => Err(JsonError::Lexer(LexerError::InvalidEscapeCharacter {
+                ch: other,
+                position: self.current_position(),
+            })),
+            None => Err(JsonError::Lexer(LexerError::UnexpectedEndOfInput(
+                self.current_position(),
+            ))),
         }
-        Err(JsonError::Lexer(LexerError::UnterminatedString(start)))
+    }
+
+    fn read_string(&mut self) -> Result<JsonString<'a>, JsonError> {
+        let start = self.current_position();
+        // consume opening quote and set start position after it
+        // caller guarantees the next character is '"'
+        self.next()
+            .ok_or(JsonError::Lexer(UnterminatedString(start)))?;
+        let start_pos = self.byte_pos;
+
+        loop {
+            let ch = self
+                .next()
+                .ok_or(JsonError::Lexer(UnterminatedString(start)))?;
+            match ch {
+                '"' => {
+                    let end_pos = self.byte_pos - ch.len_utf8();
+                    return Ok(JsonString::Borrowed(&self.input[start_pos..end_pos]));
+                }
+                '\\' => {
+                    // switch to slow path: capture prefix, consume escape and push it
+                    let escape_start = self.byte_pos - '\\'.len_utf8();
+                    let mut buf = self.input[start_pos..escape_start].to_string();
+                    let escaped = self.read_escape()?;
+                    buf.push(escaped);
+                    return self.read_string_slow(buf, start);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn read_string_slow(
+        &mut self,
+        mut buf: String,
+        start: Position,
+    ) -> Result<JsonString<'a>, JsonError> {
+        loop {
+            let ch = self
+                .next()
+                .ok_or(JsonError::Lexer(UnterminatedString(start)))?;
+            match ch {
+                '"' => return Ok(JsonString::Owned(buf)),
+                '\\' => buf.push(self.read_escape()?),
+                _ => buf.push(ch),
+            }
+        }
     }
 
     fn read_unicode_escape(&mut self) -> Result<char, JsonError> {
