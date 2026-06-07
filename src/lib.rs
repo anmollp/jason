@@ -257,6 +257,14 @@ mod tests {
             assert_eq!(result, JsonValue::String("\n".to_string()));
             let result = parse_from_str(r#""\t""#)?;
             assert_eq!(result, JsonValue::String("\t".to_string()));
+            let result = parse_from_str(r#""hello\nworld""#)?;
+            assert_eq!(result, JsonValue::String("hello\nworld".into()));
+
+            let result = parse_from_str(r#""a\tb\nc""#)?;
+            assert_eq!(result, JsonValue::String("a\tb\nc".into()));
+
+            let result = parse_from_str(r#""a\"b""#)?;
+            assert_eq!(result, JsonValue::String("a\"b".into()));
             Ok(())
         }
 
