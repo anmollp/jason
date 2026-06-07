@@ -336,6 +336,25 @@ mod tests {
             assert_eq!(parse_from_str("-1.5e3")?, JsonValue::Number(-1500.0));
             Ok(())
         }
+
+        #[test]
+        fn test_valid_escape_parsing() -> Result<(), JsonError> {
+            assert_eq!(
+                parse_from_str(r#""hello\nworld""#)?,
+                JsonValue::String("hello\nworld".into())
+            );
+
+            assert_eq!(
+                parse_from_str(r#""a\tb\nc""#)?,
+                JsonValue::String("a\tb\nc".into())
+            );
+
+            assert_eq!(
+                parse_from_str(r#""a\"b""#)?,
+                JsonValue::String("a\"b".into())
+            );
+            Ok(())
+        }
     }
 
     mod parser_invalid_tests {
