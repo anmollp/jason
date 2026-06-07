@@ -1,5 +1,5 @@
+use crate::error::{JsonError, Position};
 use crate::lexer::LexerError::UnterminatedString;
-use crate::{JsonError, Position};
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::Chars;
@@ -385,3 +385,4 @@ impl<'a> Lexer<'a> {
         Ok(())
     }
 }
+

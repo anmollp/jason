@@ -1,12 +1,6 @@
-use crate::JsonValue;
+use crate::value::JsonValue;
 
-pub fn to_json_string(value: &JsonValue) -> String {
-    let mut output = String::new();
-    serialize(value, &mut output);
-    output
-}
-
-fn serialize(value: &JsonValue, output: &mut String) {
+pub(crate) fn serialize(value: &JsonValue, output: &mut String) {
     match value {
         JsonValue::Null => output.push_str("null"),
         JsonValue::Bool(b) => match b {
@@ -46,13 +40,7 @@ fn serialize(value: &JsonValue, output: &mut String) {
     }
 }
 
-pub fn to_pretty_string(value: &JsonValue) -> String {
-    let mut output = String::new();
-    pretty_serialize(value, &mut output, 0);
-    output
-}
-
-fn pretty_serialize(value: &JsonValue, output: &mut String, indent: usize) {
+pub(crate) fn pretty_serialize(value: &JsonValue, output: &mut String, indent: usize) {
     match value {
         JsonValue::Null => output.push_str("null"),
         JsonValue::Number(n) => output.push_str(&n.to_string()),

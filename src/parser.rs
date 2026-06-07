@@ -1,13 +1,8 @@
+use crate::error::{JsonError, Position};
 use crate::lexer::{Lexer, SpannedToken, Token};
-use crate::{JsonError, JsonValue, Position};
+use crate::value::JsonValue;
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
-
-pub fn parse_from_str(input: &str) -> Result<JsonValue, JsonError> {
-    let lexer = Lexer::new(input);
-    let mut parser = Parser::new(lexer)?;
-    parser.parse()
-}
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -55,7 +50,7 @@ impl<'a> Parser<'a> {
         let current = lexer.next_token()?;
         Ok(Self { lexer, current })
     }
-    fn parse(&mut self) -> Result<JsonValue, JsonError> {
+    pub(crate) fn parse(&mut self) -> Result<JsonValue, JsonError> {
         let value = self.parse_value()?;
         if self.current_token().is_some() {
             let token = self.current_token().unwrap();
@@ -236,3 +231,4 @@ impl<'a> Parser<'a> {
         Ok(JsonValue::Object(object))
     }
 }
+
