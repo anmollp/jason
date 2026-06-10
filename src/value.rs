@@ -36,6 +36,32 @@ impl JsonValue {
         }
         Some(current)
     }
+
+    pub fn pointer_mut(&mut self, pointer: &str) -> Option<&mut JsonValue> {
+        if pointer.is_empty() {
+            return Some(self);
+        }
+
+        if !pointer.starts_with('/') {
+            return None;
+        }
+
+        let mut current = self;
+        for segment in pointer.split('/').skip(1) {
+            match current {
+                JsonValue::Object(map) => {
+                    let key = decode_pointer_segment(segment);
+                    current = map.get_mut(key.as_str())?;
+                }
+                JsonValue::Array(array) => {
+                    let index: usize = segment.parse().ok()?;
+                    current = array.get_mut(index)?;
+                }
+                _ => return None,
+            }
+        }
+        Some(current)
+    }
 }
 
 fn decode_pointer_segment(segment: &str) -> String {
