@@ -3,6 +3,7 @@ mod lexer;
 mod parser;
 mod serializer;
 mod value;
+mod patch;
 
 use crate::lexer::Lexer;
 use crate::parser::Parser;
@@ -10,6 +11,7 @@ pub use error::JsonError;
 pub use lexer::LexerError;
 pub use parser::ParserError;
 pub use value::JsonValue;
+pub use patch::{PatchOperation, PatchError};
 
 pub fn parse_from_str(input: &str) -> Result<JsonValue, JsonError> {
     let lexer = Lexer::new(input);
