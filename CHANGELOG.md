@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.4.0
+- JSON Patch (RFC 6902-inspired) support on top of the existing JSON parser, serializer, and JSON Pointer system
+- `Add` — insert new values into objects and arrays
+- `Replace` — update existing values via JSON Pointer paths
+- `Remove` — delete values and return removed elements
+- `Move` — relocate values within a JSON document
+- `Copy` — duplicate values within a JSON document
+- `Test` (experimental foundation added / planned depending on your state) — value equality validation via pointer paths
+
 ## v1.3.0
 - Added JSON Pointer traversal API.
 - Support for object and array navigation.

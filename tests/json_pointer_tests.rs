@@ -139,3 +139,75 @@ fn test_pointer_escaped_tilde() {
         Some(&JsonValue::String("test".to_string()))
     );
 }
+
+#[test]
+fn test_pointer_mut_object() {
+    let mut obj = BTreeMap::new();
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
+
+    let mut value = JsonValue::Object(obj);
+
+    if let Some(JsonValue::String(name)) = value.pointer_mut("/name") {
+        *name = "Alice".to_string();
+    }
+
+    assert_eq!(
+        value.pointer("/name"),
+        Some(&JsonValue::String("Alice".to_string()))
+    );
+}
+
+#[test]
+fn test_pointer_mut_array() {
+    let mut value = JsonValue::Array(vec![
+        JsonValue::Number(1.0),
+        JsonValue::Number(2.0),
+    ]);
+
+    if let Some(JsonValue::Number(n)) = value.pointer_mut("/1") {
+        *n = 42.0;
+    }
+
+    assert_eq!(
+        value.pointer("/1"),
+        Some(&JsonValue::Number(42.0))
+    );
+}
+
+#[test]
+fn test_replace_object_value() {
+    let mut obj = BTreeMap::new();
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
+
+    let replace_value = JsonValue::String("Alice".to_string());
+
+    let mut value = JsonValue::Object(obj);
+    value.replace("/name", replace_value);
+    assert_eq!(
+        value.pointer("/name"),
+        Some(&JsonValue::String("Alice".to_string()))
+    );
+}
+
+#[test]
+fn test_replace_invalid_path() {
+    let mut obj = BTreeMap::new();
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
+
+    let mut value = JsonValue::Object(obj);
+
+    assert!(!value.replace("/does_not_exist", JsonValue::String("Alice".to_string())));
+
+    assert_eq!(value.pointer("/name"), Some(&JsonValue::String("John".to_string())));
+}
+
+#[test]
+fn test_replace_array_element() {
+    let mut value = JsonValue::Array(vec![
+        JsonValue::Number(1.0),
+        JsonValue::Number(2.0),
+    ]);
+
+    assert!(value.replace("/1", JsonValue::Number(42.0)));
+    assert_eq!(value.pointer("/1"), Some(&JsonValue::Number(42.0)));
+}
