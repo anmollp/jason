@@ -10,22 +10,22 @@ pub fn merge_patch(target: &mut JsonValue, patch: &JsonValue) {
                         // null = delete
                         JsonValue::Null => {
                             target_map.remove(key);
-                        },
+                        }
                         // object = recurse if possible
                         _ => match target_map.get_mut(key) {
-                                Some(child) => merge_patch(child, patch_value),
-                                None => {
-                                    target_map.insert(key.clone(), patch_value.clone());
-                                }
+                            Some(child) => merge_patch(child, patch_value),
+                            None => {
+                                target_map.insert(key.clone(), patch_value.clone());
                             }
+                        },
                     }
                 }
             } else {
                 // target is not object → replace
                 *target = patch.clone()
             }
-        },
+        }
         // patch is not object → replace entire target
-        _ => *target = patch.clone()
+        _ => *target = patch.clone(),
     }
 }

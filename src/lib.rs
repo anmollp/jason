@@ -1,21 +1,21 @@
+mod diff;
 mod error;
 mod lexer;
+mod merge_patch;
 mod parser;
+mod patch;
 mod serializer;
 mod value;
-mod patch;
-mod diff;
-mod merge_patch;
 
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+pub use diff::diff;
 pub use error::JsonError;
 pub use lexer::LexerError;
-pub use parser::ParserError;
-pub use value::JsonValue;
-pub use patch::{PatchOperation, PatchError};
-pub use diff::diff;
 pub use merge_patch::merge_patch;
+pub use parser::ParserError;
+pub use patch::{PatchError, PatchOperation};
+pub use value::JsonValue;
 
 pub fn parse_from_str(input: &str) -> Result<JsonValue, JsonError> {
     let lexer = Lexer::new(input);

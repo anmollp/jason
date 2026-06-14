@@ -159,19 +159,13 @@ fn test_pointer_mut_object() {
 
 #[test]
 fn test_pointer_mut_array() {
-    let mut value = JsonValue::Array(vec![
-        JsonValue::Number(1.0),
-        JsonValue::Number(2.0),
-    ]);
+    let mut value = JsonValue::Array(vec![JsonValue::Number(1.0), JsonValue::Number(2.0)]);
 
     if let Some(JsonValue::Number(n)) = value.pointer_mut("/1") {
         *n = 42.0;
     }
 
-    assert_eq!(
-        value.pointer("/1"),
-        Some(&JsonValue::Number(42.0))
-    );
+    assert_eq!(value.pointer("/1"), Some(&JsonValue::Number(42.0)));
 }
 
 #[test]
@@ -198,15 +192,15 @@ fn test_replace_invalid_path() {
 
     assert!(!value.replace("/does_not_exist", JsonValue::String("Alice".to_string())));
 
-    assert_eq!(value.pointer("/name"), Some(&JsonValue::String("John".to_string())));
+    assert_eq!(
+        value.pointer("/name"),
+        Some(&JsonValue::String("John".to_string()))
+    );
 }
 
 #[test]
 fn test_replace_array_element() {
-    let mut value = JsonValue::Array(vec![
-        JsonValue::Number(1.0),
-        JsonValue::Number(2.0),
-    ]);
+    let mut value = JsonValue::Array(vec![JsonValue::Number(1.0), JsonValue::Number(2.0)]);
 
     assert!(value.replace("/1", JsonValue::Number(42.0)));
     assert_eq!(value.pointer("/1"), Some(&JsonValue::Number(42.0)));

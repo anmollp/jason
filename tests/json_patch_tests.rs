@@ -1,13 +1,10 @@
-use std::collections::BTreeMap;
 use jason::{JsonValue, PatchOperation};
+use std::collections::BTreeMap;
 
 #[test]
 fn test_apply_replace_operation() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -26,10 +23,7 @@ fn test_apply_replace_operation() {
 #[test]
 fn test_remove_object_value() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -57,20 +51,14 @@ fn test_remove_array_element() {
 
     assert_eq!(
         value,
-        JsonValue::Array(vec![
-            JsonValue::Number(1.0),
-            JsonValue::Number(3.0),
-        ])
+        JsonValue::Array(vec![JsonValue::Number(1.0), JsonValue::Number(3.0),])
     );
 }
 
 #[test]
 fn test_remove_missing_key() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -125,10 +113,7 @@ fn test_remove_nexted_object_value() {
 #[test]
 fn test_object_insertion() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -138,19 +123,13 @@ fn test_object_insertion() {
     };
 
     assert!(value.apply(op).is_ok());
-    assert_eq!(
-        value.pointer("/age"),
-        Some(&JsonValue::Number(30.0))
-    );
+    assert_eq!(value.pointer("/age"), Some(&JsonValue::Number(30.0)));
 }
 
 #[test]
 fn test_object_overwrite() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -235,17 +214,16 @@ fn test_array_out_of_bounds() {
 #[test]
 fn test_move_object_property() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
-    value.apply(PatchOperation::Move {
-        from: "/name".to_string(),
-        path: "/username".to_string(),
-    }).unwrap();
+    value
+        .apply(PatchOperation::Move {
+            from: "/name".to_string(),
+            path: "/username".to_string(),
+        })
+        .unwrap();
 
     assert_eq!(value.pointer("/name"), None);
 
@@ -258,10 +236,7 @@ fn test_move_object_property() {
 #[test]
 fn test_nested_move() {
     let mut preferences = BTreeMap::new();
-    preferences.insert(
-        "theme".to_string(),
-        JsonValue::String("dark".to_string()),
-    );
+    preferences.insert("theme".to_string(), JsonValue::String("dark".to_string()));
 
     let settings = BTreeMap::new();
 
@@ -271,10 +246,12 @@ fn test_nested_move() {
 
     let mut value = JsonValue::Object(root);
 
-    value.apply(PatchOperation::Move {
-        from: "/preferences/theme".to_string(),
-        path: "/settings/theme".to_string(),
-    }).unwrap();
+    value
+        .apply(PatchOperation::Move {
+            from: "/preferences/theme".to_string(),
+            path: "/settings/theme".to_string(),
+        })
+        .unwrap();
 
     assert_eq!(value.pointer("/preferences/theme"), None);
     assert_eq!(
@@ -291,10 +268,12 @@ fn test_array_move() {
         JsonValue::String("c".to_string()),
     ]);
 
-    value.apply(PatchOperation::Move {
-        from: "/1".to_string(),
-        path: "/0".to_string(),
-    }).unwrap();
+    value
+        .apply(PatchOperation::Move {
+            from: "/1".to_string(),
+            path: "/0".to_string(),
+        })
+        .unwrap();
 
     assert_eq!(
         value,
@@ -309,17 +288,16 @@ fn test_array_move() {
 #[test]
 fn test_copy_object_property() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
-    value.apply(PatchOperation::Copy {
-        from: "/name".to_string(),
-        path: "/username".to_string(),
-    }).unwrap();
+    value
+        .apply(PatchOperation::Copy {
+            from: "/name".to_string(),
+            path: "/username".to_string(),
+        })
+        .unwrap();
 
     assert_eq!(
         value.pointer("/name"),
@@ -339,10 +317,12 @@ fn test_copy_array_element() {
         JsonValue::Number(3.0),
     ]);
 
-    value.apply(PatchOperation::Copy {
-        from: "/1".to_string(),
-        path: "/-".to_string(),
-    }).unwrap();
+    value
+        .apply(PatchOperation::Copy {
+            from: "/1".to_string(),
+            path: "/-".to_string(),
+        })
+        .unwrap();
 
     assert_eq!(
         value,
@@ -369,10 +349,12 @@ fn test_copy_nested_value() {
 
     let mut value = JsonValue::Object(outer);
 
-    value.apply(PatchOperation::Copy {
-        from: "/contact/email".to_string(),
-        path: "/email".to_string(),
-    }).unwrap();
+    value
+        .apply(PatchOperation::Copy {
+            from: "/contact/email".to_string(),
+            path: "/email".to_string(),
+        })
+        .unwrap();
 
     assert_eq!(
         value.pointer("/email"),
@@ -387,10 +369,7 @@ fn test_copy_nested_value() {
 #[test]
 fn test_copy_invalid_source() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -405,10 +384,7 @@ fn test_copy_invalid_source() {
 #[test]
 fn test_test_operation_success() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -423,10 +399,7 @@ fn test_test_operation_success() {
 #[test]
 fn test_test_operation_mismatch() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -441,10 +414,7 @@ fn test_test_operation_mismatch() {
 #[test]
 fn test_test_operation_missing_path() {
     let mut obj = BTreeMap::new();
-    obj.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
+    obj.insert("name".to_string(), JsonValue::String("John".to_string()));
 
     let mut value = JsonValue::Object(obj);
 
@@ -459,10 +429,7 @@ fn test_test_operation_missing_path() {
 #[test]
 fn test_test_operation_nested_value() {
     let mut inner = BTreeMap::new();
-    inner.insert(
-        "theme".to_string(),
-        JsonValue::String("dark".to_string()),
-    );
+    inner.insert("theme".to_string(), JsonValue::String("dark".to_string()));
 
     let mut outer = BTreeMap::new();
     outer.insert("preferences".to_string(), JsonValue::Object(inner));

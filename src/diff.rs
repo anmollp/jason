@@ -7,12 +7,12 @@ pub fn diff(old: &JsonValue, new: &JsonValue) -> Vec<PatchOperation> {
 }
 
 fn diff_inner(old: &JsonValue, new: &JsonValue, path: &str, patches: &mut Vec<PatchOperation>) {
-    match(old, new) {
+    match (old, new) {
         (JsonValue::Object(old_map), JsonValue::Object(new_map)) => {
             for key in old_map.keys() {
                 if !new_map.contains_key(key) {
                     patches.push(PatchOperation::Remove {
-                        path: join_path(path, key)
+                        path: join_path(path, key),
                     })
                 }
                 if let Some(new_value) = new_map.get(key) {
@@ -24,16 +24,16 @@ fn diff_inner(old: &JsonValue, new: &JsonValue, path: &str, patches: &mut Vec<Pa
                 if !old_map.contains_key(key) {
                     patches.push(PatchOperation::Add {
                         path: join_path(path, key),
-                        value: new_map.get(key).unwrap().to_owned()
+                        value: new_map.get(key).unwrap().to_owned(),
                     })
                 }
             }
-        },
+        }
         (JsonValue::Array(_), JsonValue::Array(_)) => {
             if old != new {
                 patches.push(PatchOperation::Replace {
                     path: path.to_string(),
-                    value: new.clone()
+                    value: new.clone(),
                 });
             }
         }
@@ -41,7 +41,7 @@ fn diff_inner(old: &JsonValue, new: &JsonValue, path: &str, patches: &mut Vec<Pa
             if old != new {
                 patches.push(PatchOperation::Replace {
                     path: path.to_string(),
-                    value: new.clone()
+                    value: new.clone(),
                 });
             }
         }

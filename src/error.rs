@@ -29,3 +29,9 @@ impl Display for Position {
         write!(f, "line {}, column {}", self.line, self.column)
     }
 }
+
+impl Default for Position {
+    fn default() -> Self {
+        Position { line: 1, column: 1 }
+    }
+}

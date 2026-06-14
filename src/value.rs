@@ -1,7 +1,7 @@
+use crate::PatchError;
+use crate::patch::PatchOperation;
 use std::cmp::PartialEq;
 use std::collections::BTreeMap;
-use crate::patch::PatchOperation;
-use crate::PatchError;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum JsonValue {
@@ -68,27 +68,26 @@ impl JsonValue {
 
     pub fn apply(&mut self, operation: PatchOperation) -> Result<(), PatchError> {
         match operation {
-            PatchOperation::Replace { path, value} => {
-                self.replace(&path, value)
-                    .then_some(())
-                    .ok_or(PatchError::InvalidPath)
-            },
+            PatchOperation::Replace { path, value } => self
+                .replace(&path, value)
+                .then_some(())
+                .ok_or(PatchError::InvalidPath),
             PatchOperation::Remove { path } => {
                 self.remove(&path)?;
-                    Ok(())
-            },
-            PatchOperation::Add { path, value} => {
+                Ok(())
+            }
+            PatchOperation::Add { path, value } => {
                 self.add(&path, value)?;
                 Ok(())
-            },
-            PatchOperation::Move { from, path} => {
+            }
+            PatchOperation::Move { from, path } => {
                 self.r#move(&from, &path)?;
                 Ok(())
-            },
-            PatchOperation::Copy { from, path} => {
+            }
+            PatchOperation::Copy { from, path } => {
                 self.copy(&from, &path)?;
                 Ok(())
-            },
+            }
             PatchOperation::Test { path, value } => {
                 self.test(&path, value)?;
                 Ok(())
@@ -108,59 +107,61 @@ impl JsonValue {
 
     pub fn remove(&mut self, path: &str) -> Result<JsonValue, PatchError> {
         let (parent_path, child) = match split_parent(path) {
-          Some(parts) => parts,
-            None => return Err(PatchError::InvalidPath)
+            Some(parts) => parts,
+            None => return Err(PatchError::InvalidPath),
         };
         let parent = match self.pointer_mut(parent_path) {
             Some(value) => value,
-            None => return Err(PatchError::InvalidPath)
+            None => return Err(PatchError::InvalidPath),
         };
         match parent {
             JsonValue::Array(arr) => {
-                let index = child.parse::<usize>().map_err(|_| PatchError::InvalidArrayIndex)?;
+                let index = child
+                    .parse::<usize>()
+                    .map_err(|_| PatchError::InvalidArrayIndex)?;
                 if index >= arr.len() {
                     return Err(PatchError::IndexOutOfBounds);
                 }
                 Ok(arr.remove(index))
+            }
+            JsonValue::Object(map) => match map.remove(child) {
+                Some(value) => Ok(value),
+                None => Err(PatchError::MissingValue),
             },
-            JsonValue::Object(map) => {
-                match map.remove(child) {
-                    Some(value) => Ok(value),
-                    None => Err(PatchError::MissingValue)
-                }
-            },
-            _ => Err(PatchError::InvalidPath)
+            _ => Err(PatchError::InvalidPath),
         }
     }
 
     pub fn add(&mut self, path: &str, value: JsonValue) -> Result<(), PatchError> {
         let (parent_path, child) = match split_parent(path) {
             Some(parts) => parts,
-            None => return Err(PatchError::InvalidPath)
+            None => return Err(PatchError::InvalidPath),
         };
         let parent = match self.pointer_mut(parent_path) {
             Some(val) => val,
-            None => return Err(PatchError::InvalidPath)
+            None => return Err(PatchError::InvalidPath),
         };
         match parent {
             JsonValue::Object(obj) => {
                 obj.insert(child.to_string(), value);
                 Ok(())
-            },
+            }
             JsonValue::Array(arr) => {
                 if child == "-" {
                     arr.push(value);
                     Ok(())
                 } else {
-                    let index = child.parse::<usize>().map_err(|_| PatchError::InvalidArrayIndex)?;
+                    let index = child
+                        .parse::<usize>()
+                        .map_err(|_| PatchError::InvalidArrayIndex)?;
                     if index > arr.len() {
                         return Err(PatchError::IndexOutOfBounds);
                     }
                     arr.insert(index, value);
                     Ok(())
                 }
-            },
-            _ => Err(PatchError::InvalidPath)
+            }
+            _ => Err(PatchError::InvalidPath),
         }
     }
 
@@ -170,10 +171,7 @@ impl JsonValue {
     }
 
     pub fn copy(&mut self, from: &str, path: &str) -> Result<(), PatchError> {
-        let value = self
-            .pointer(from)
-            .ok_or(PatchError::InvalidPath)?
-            .clone();
+        let value = self.pointer(from).ok_or(PatchError::InvalidPath)?.clone();
 
         self.add(path, value)
     }
@@ -181,7 +179,7 @@ impl JsonValue {
     pub fn test(&mut self, path: &str, expected_value: JsonValue) -> Result<(), PatchError> {
         let actual = match self.pointer(path) {
             Some(value) => value,
-            None => return Err(PatchError::InvalidPath)
+            None => return Err(PatchError::InvalidPath),
         };
         if actual == &expected_value {
             Ok(())
