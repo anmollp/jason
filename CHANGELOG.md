@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.6.0
+- Added support for RFC 7396 JSON Merge Patch
+- Introduced recursive in-place document mutation
+- Implemented full RFC-compliant behavior:
+  - If patch is not an object → target is fully replaced 
+  - If patch is an object → fields are applied recursively 
+  - If a field value is null → the field is removed from the target 
+  - If a field exists in both target and patch:
+    - Objects → recursively merged 
+    - Scalars → replaced  
+- Added deep recursive traversal for nested JSON objects 
+- Preserves untouched fields while applying partial updates
+- Supports mixed-depth object updates without full document replacement
+
 ## v1.5.0
 - Added recursive JSON diff generation
 - Generate patch operations from two JSON documents
