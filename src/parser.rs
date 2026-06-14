@@ -1,5 +1,5 @@
 use crate::error::{JsonError, Position};
-use crate::lexer::{Lexer, SpannedToken, Token, JsonString};
+use crate::lexer::{JsonString, Lexer, SpannedToken, Token};
 use crate::value::JsonValue;
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
@@ -167,13 +167,17 @@ impl<'a> Parser<'a> {
         loop {
             let key_token = match self.next()? {
                 Some(t) => t,
-                None => return Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(self.last_position())))
+                None => {
+                    return Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(
+                        self.last_position(),
+                    )));
+                }
             };
 
             let key = match key_token.token {
                 Token::String(s) => match s {
                     JsonString::Borrowed(b) => b.to_string(),
-                    JsonString::Owned(o) => o
+                    JsonString::Owned(o) => o,
                 },
                 _ => {
                     return Err(JsonError::Parser(ParserError::ExpectedStringKey(
