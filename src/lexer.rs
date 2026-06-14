@@ -5,14 +5,14 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Token {
+pub enum Token<'a> {
     LeftBrace,
     RightBrace,
     LeftBracket,
     RightBracket,
     Colon,
     Comma,
-    String(String),
+    String(JsonString<'a>),
     Number(f64),
     True,
     False,
@@ -20,8 +20,8 @@ pub enum Token {
 }
 
 #[derive(Debug, Clone)]
-pub struct SpannedToken {
-    pub token: Token,
+pub struct SpannedToken<'a> {
+    pub token: Token<'a>,
     pub position: Position,
 }
 
@@ -33,7 +33,8 @@ pub struct Lexer<'a> {
     column: usize,
 }
 
-enum JsonString<'a> {
+#[derive(Debug, PartialEq, Clone)]
+pub enum JsonString<'a> {
     Borrowed(&'a str),
     Owned(String),
 }
@@ -117,11 +118,11 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn make_token(&self, token: Token, position: Position) -> SpannedToken {
+    fn make_token(&self, token: Token<'a>, position: Position) -> SpannedToken<'a> {
         SpannedToken { token, position }
     }
 
-    pub fn next_token(&mut self) -> Result<Option<SpannedToken>, JsonError> {
+    pub fn next_token(&mut self) -> Result<Option<SpannedToken<'a>>, JsonError> {
         self.skip_whitespace();
         let ch = match self.peek() {
             Some(c) => c,
@@ -157,11 +158,11 @@ impl<'a> Lexer<'a> {
             }
             '"' => {
                 let string = self.read_string()?;
-                let owned = match string {
-                    JsonString::Borrowed(s) => s.to_string(),
-                    JsonString::Owned(s) => s,
-                };
-                Ok(Some(self.make_token(Token::String(owned), position)))
+                // let owned = match string {
+                //     JsonString::Borrowed(s) => s.to_string(),
+                //     JsonString::Owned(s) => s,
+                // };
+                Ok(Some(self.make_token(Token::String(string), position)))
             }
             't' => {
                 self.read_literal("true")?;

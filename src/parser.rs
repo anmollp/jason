@@ -1,12 +1,12 @@
 use crate::error::{JsonError, Position};
-use crate::lexer::{Lexer, SpannedToken, Token};
+use crate::lexer::{Lexer, SpannedToken, Token, JsonString};
 use crate::value::JsonValue;
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
-    peeked: Option<SpannedToken>,
+    peeked: Option<SpannedToken<'a>>,
 }
 
 #[derive(Debug)]
@@ -70,7 +70,7 @@ impl<'a> Parser<'a> {
         Ok(value)
     }
 
-    fn peek(&mut self) -> Result<Option<&SpannedToken>, JsonError> {
+    fn peek(&mut self) -> Result<Option<&SpannedToken<'_>>, JsonError> {
         if self.peeked.is_none() {
             self.peeked = self.lexer.next_token()?;
         }
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn next(&mut self) -> Result<Option<SpannedToken>, JsonError> {
+    fn next(&mut self) -> Result<Option<SpannedToken<'_>>, JsonError> {
         if let Some(token) = self.peeked.take() {
             Ok(Some(token))
         } else {
@@ -111,7 +111,13 @@ impl<'a> Parser<'a> {
             Token::False => Ok(JsonValue::Bool(false)),
 
             Token::Number(n) => Ok(JsonValue::Number(n)),
-            Token::String(s) => Ok(JsonValue::String(s)),
+            Token::String(s) => {
+                let owned = match s {
+                    JsonString::Borrowed(b) => b.to_string(),
+                    JsonString::Owned(o) => o,
+                };
+                Ok(JsonValue::String(owned))
+            }
             Token::LeftBracket => self.parse_array(),
             Token::LeftBrace => self.parse_object(),
             _ => Err(JsonError::Parser(ParserError::UnexpectedToken(
@@ -159,12 +165,16 @@ impl<'a> Parser<'a> {
         }
 
         loop {
-            let key_token = self.next()?.ok_or_else(|| {
-                JsonError::Parser(ParserError::UnexpectedEndOfInput(self.last_position()))
-            })?;
+            let key_token = match self.next()? {
+                Some(t) => t,
+                None => return Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(self.last_position())))
+            };
 
             let key = match key_token.token {
-                Token::String(s) => s,
+                Token::String(s) => match s {
+                    JsonString::Borrowed(b) => b.to_string(),
+                    JsonString::Owned(o) => o
+                },
                 _ => {
                     return Err(JsonError::Parser(ParserError::ExpectedStringKey(
                         key_token.position,
