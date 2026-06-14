@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.5.0
+- Added recursive JSON diff generation
+- Generate patch operations from two JSON documents
+- Supports:
+  - Object additions
+  - Object removals
+  - Object replacements
+  - Nested object traversal
+  - Produces PatchOperation sequences compatible with the existing JSON Patch engine
+
 ## v1.4.0
 - JSON Patch (RFC 6902-inspired) support on top of the existing JSON parser, serializer, and JSON Pointer system
 - `Add` — insert new values into objects and arrays
