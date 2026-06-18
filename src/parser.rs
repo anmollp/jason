@@ -1,12 +1,12 @@
 use crate::error::{JsonError, Position};
-use crate::lexer::{Lexer, SpannedToken, Token};
+use crate::lexer::{JsonString, Lexer, SpannedToken, Token};
 use crate::value::JsonValue;
 use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
-    current: Option<SpannedToken>,
+    peeked: Option<SpannedToken<'a>>,
 }
 
 #[derive(Debug)]
@@ -46,99 +46,77 @@ impl Display for ParserError {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(mut lexer: Lexer<'a>) -> Result<Self, JsonError> {
-        let current = lexer.next_token()?;
-        Ok(Self { lexer, current })
+    pub fn new(lexer: Lexer<'a>) -> Result<Self, JsonError> {
+        Ok(Self {
+            lexer,
+            peeked: None,
+        })
     }
+
+    fn has_extra_tokens(&mut self) -> Result<bool, JsonError> {
+        Ok(self.peek()?.is_some())
+    }
+
+    fn last_position(&mut self) -> Position {
+        self.peeked.as_ref().map(|t| t.position).unwrap_or_default()
+    }
+
     pub(crate) fn parse(&mut self) -> Result<JsonValue, JsonError> {
         let value = self.parse_value()?;
-        if self.current_token().is_some() {
-            let token = self.current_token().unwrap();
-            return Err(JsonError::Parser(ParserError::UnexpectedToken(
-                token.position,
-            )));
+        if self.has_extra_tokens()? {
+            let pos = self.last_position();
+            return Err(JsonError::Parser(ParserError::UnexpectedToken(pos)));
         }
         Ok(value)
     }
 
-    fn advance(&mut self) -> Result<Option<SpannedToken>, JsonError> {
-        let token = self.current.clone();
-        self.current = self.lexer.next_token()?;
-        Ok(token)
+    fn peek(&mut self) -> Result<Option<&SpannedToken<'_>>, JsonError> {
+        if self.peeked.is_none() {
+            self.peeked = self.lexer.next_token()?;
+        }
+        Ok(self.peeked.as_ref())
     }
 
-    fn expect(&mut self, expected: Token) -> Result<(), JsonError> {
-        if self.match_token(&expected)? {
-            Ok(())
-        } else {
-            match self.current_token() {
-                Some(token) => Err(JsonError::Parser(ParserError::UnexpectedToken(
-                    token.position,
-                ))),
-                None => Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(
-                    self.eof_position(),
-                ))),
+    fn eat(&mut self, expected: Token) -> Result<bool, JsonError> {
+        match self.peek()? {
+            Some(t) if t.token == expected => {
+                self.peeked.take();
+                Ok(true)
             }
+            _ => Ok(false),
         }
     }
 
-    fn check(&self, token: &Token) -> bool {
-        self.current.as_ref().map(|t| &t.token) == Some(token)
-    }
-
-    fn match_token(&mut self, token: &Token) -> Result<bool, JsonError> {
-        if self.check(token) {
-            self.advance()?;
-            return Ok(true);
-        }
-        Ok(false)
-    }
-
-    fn current_token(&self) -> Option<&SpannedToken> {
-        self.current.as_ref()
-    }
-
-    fn eof_position(&self) -> Position {
-        self.lexer.current_position()
-    }
-
-    fn current_position(&self) -> Position {
-        match self.current_token() {
-            Some(token) => token.position,
-            None => self.eof_position(),
+    fn next(&mut self) -> Result<Option<SpannedToken<'_>>, JsonError> {
+        if let Some(token) = self.peeked.take() {
+            Ok(Some(token))
+        } else {
+            self.lexer.next_token()
         }
     }
 
     fn parse_value(&mut self) -> Result<JsonValue, JsonError> {
-        let token = match self.current_token() {
-            Some(t) => t.clone(),
+        let token = match self.next()? {
+            Some(t) => t,
             None => {
                 return Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(
-                    self.current_position(),
+                    self.last_position(),
                 )));
             }
         };
 
         match token.token {
-            Token::Null => {
-                self.advance()?;
-                Ok(JsonValue::Null)
-            }
-            Token::True => {
-                self.advance()?;
-                Ok(JsonValue::Bool(true))
-            }
-            Token::False => {
-                self.advance()?;
-                Ok(JsonValue::Bool(false))
-            }
-            Token::Number(n) => {
-                self.advance()?;
-                Ok(JsonValue::Number(n))
-            }
+            Token::Null => Ok(JsonValue::Null),
+            Token::True => Ok(JsonValue::Bool(true)),
+            Token::False => Ok(JsonValue::Bool(false)),
+
+            Token::Number(n) => Ok(JsonValue::Number(n)),
             Token::String(s) => {
-                self.advance()?;
-                Ok(JsonValue::String(s))
+                let owned = match s {
+                    JsonString::Borrowed(b) => b.to_string(),
+                    JsonString::Owned(o) => o,
+                };
+                Ok(JsonValue::String(owned))
             }
             Token::LeftBracket => self.parse_array(),
             Token::LeftBrace => self.parse_object(),
@@ -149,84 +127,99 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_array(&mut self) -> Result<JsonValue, JsonError> {
-        // Consume opening bracket
-        self.expect(Token::LeftBracket)?;
-        let mut array: Vec<JsonValue> = Vec::new();
-        // Handle empty array early
-        if self.match_token(&Token::RightBracket)? {
+        let mut array = Vec::new();
+
+        if self.eat(Token::RightBracket)? {
             return Ok(JsonValue::Array(array));
         }
 
         loop {
-            let value = self.parse_value()?;
-            array.push(value);
-            // If comma
-            if self.match_token(&Token::Comma)? {
-                // Check trailing comma
-                if self.check(&Token::RightBracket) {
+            array.push(self.parse_value()?);
+
+            if self.eat(Token::Comma)? {
+                if self.eat(Token::RightBracket)? {
                     return Err(JsonError::Parser(ParserError::TrailingComma(
-                        self.current_position(),
+                        self.last_position(),
                     )));
                 }
                 continue;
             }
-            // If closing bracket
-            if self.match_token(&Token::RightBracket)? {
+
+            if self.eat(Token::RightBracket)? {
                 break;
             }
-            // Otherwise Error
+
             return Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBracket(
-                self.current_position(),
+                self.last_position(),
             )));
         }
-        // return array
+
         Ok(JsonValue::Array(array))
     }
 
     fn parse_object(&mut self) -> Result<JsonValue, JsonError> {
-        // Consume opening brace
-        self.expect(Token::LeftBrace)?;
         let mut object = BTreeMap::new();
         // Handle empty object early
-        if self.match_token(&Token::RightBrace)? {
+        if self.eat(Token::RightBrace)? {
             return Ok(JsonValue::Object(object));
         }
 
         loop {
-            let key_token = self.advance()?.ok_or_else(|| {
-                JsonError::Parser(ParserError::UnexpectedEndOfInput(self.current_position()))
-            })?;
-
-            return match key_token.token {
-                Token::String(s) => {
-                    // Consume colon
-                    self.expect(Token::Colon)?;
-                    // Parse value
-                    let value = self.parse_value()?;
-                    object.insert(s, value);
-                    // If comma
-                    if self.match_token(&Token::Comma)? {
-                        // Check trailing comma
-                        if self.check(&Token::RightBrace) {
-                            return Err(JsonError::Parser(ParserError::TrailingComma(
-                                self.current_position(),
-                            )));
-                        }
-                        continue;
-                    }
-                    // If closing brace
-                    if self.match_token(&Token::RightBrace)? {
-                        break;
-                    }
-                    // Otherwise error
-                    Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBrace(
-                        self.current_position(),
-                    )))
+            let key_token = match self.next()? {
+                Some(t) => t,
+                None => {
+                    return Err(JsonError::Parser(ParserError::UnexpectedEndOfInput(
+                        self.last_position(),
+                    )));
                 }
-                _ => Err(JsonError::Parser(ParserError::ExpectedStringKey(
-                    key_token.position,
-                ))),
             };
+
+            let key = match key_token.token {
+                Token::String(s) => match s {
+                    JsonString::Borrowed(b) => b.to_string(),
+                    JsonString::Owned(o) => o,
+                },
+                _ => {
+                    return Err(JsonError::Parser(ParserError::ExpectedStringKey(
+                        key_token.position,
+                    )));
+                }
+            };
+
+            // expect ':'
+            if !self.eat(Token::Colon)? {
+                // If there's a different token where colon is expected, it's an unexpected token
+                return if let Some(t) = self.peek()? {
+                    Err(JsonError::Parser(ParserError::UnexpectedToken(t.position)))
+                } else {
+                    Err(JsonError::Parser(ParserError::ExpectedColon(
+                        self.last_position(),
+                    )))
+                };
+            }
+
+            // Parse value
+            let value = self.parse_value()?;
+            object.insert(key, value);
+            // If comma
+            if self.eat(Token::Comma)? {
+                // Check trailing comma
+                if self.eat(Token::RightBrace)? {
+                    return Err(JsonError::Parser(ParserError::TrailingComma(
+                        self.last_position(),
+                    )));
+                }
+                continue;
+            }
+
+            // If closing brace
+            if self.eat(Token::RightBrace)? {
+                break;
+            }
+
+            return Err(JsonError::Parser(ParserError::ExpectedCommaOrRightBrace(
+                self.last_position(),
+            )));
         }
         Ok(JsonValue::Object(object))
     }

@@ -1,24 +1,15 @@
+use jason::{JsonValue, diff};
 use std::collections::BTreeMap;
-use jason::{diff, JsonValue};
 
 #[test]
 fn test_diff_apply_round_trip() {
     let mut old_map = BTreeMap::new();
-    old_map.insert(
-        "name".to_string(),
-        JsonValue::String("John".to_string()),
-    );
-    old_map.insert(
-        "age".to_string(),
-        JsonValue::Number(30.0),
-    );
+    old_map.insert("name".to_string(), JsonValue::String("John".to_string()));
+    old_map.insert("age".to_string(), JsonValue::Number(30.0));
     let old = JsonValue::Object(old_map);
 
     let mut new_map = BTreeMap::new();
-    new_map.insert(
-        "name".to_string(),
-        JsonValue::String("Jane".to_string()),
-    );
+    new_map.insert("name".to_string(), JsonValue::String("Jane".to_string()));
     new_map.insert(
         "email".to_string(),
         JsonValue::String("jane@example.com".to_string()),
@@ -80,10 +71,7 @@ fn test_diff_nested_object_changes() {
         "city".to_string(),
         JsonValue::String("Los Angeles".to_string()),
     );
-    new_inner.insert(
-        "zip".to_string(),
-        JsonValue::String("90001".to_string()),
-    );
+    new_inner.insert("zip".to_string(), JsonValue::String("90001".to_string()));
 
     let mut new_map = BTreeMap::new();
     new_map.insert("name".to_string(), JsonValue::String("John".to_string()));
@@ -119,7 +107,10 @@ fn test_diff_array_of_objects() {
     let mut new_obj1 = BTreeMap::new();
     new_obj1.insert("id".to_string(), JsonValue::Number(1.0));
     new_obj1.insert("name".to_string(), JsonValue::String("Alice".to_string()));
-    new_obj1.insert("status".to_string(), JsonValue::String("active".to_string()));
+    new_obj1.insert(
+        "status".to_string(),
+        JsonValue::String("active".to_string()),
+    );
 
     let mut new_obj2 = BTreeMap::new();
     new_obj2.insert("id".to_string(), JsonValue::Number(2.0));
