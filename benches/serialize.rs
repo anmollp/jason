@@ -1,24 +1,8 @@
 use std::hint::black_box;
 use criterion::{criterion_group, criterion_main, Criterion};
 use jason::{to_pretty_string, to_json_string, parse_from_str};
-
-fn large_json() -> String {
-    let mut s = String::from(r#"{"users":["#);
-
-    for i in 0..10_000 {
-        if i > 0 {
-            s.push(',');
-        }
-
-        s.push_str(&format!(
-            r#"{{"id":{},"name":"user{}","active":true}}"#,
-            i, i
-        ));
-    }
-
-    s.push_str("]}");
-    s
-}
+mod common;
+use common::large_json;
 
 fn bench_serialize(c: &mut Criterion) {
     let json = large_json();

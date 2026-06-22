@@ -1,19 +1,8 @@
 use std::hint::black_box;
 use criterion::{criterion_group, criterion_main, Criterion};
 use jason::parse_from_str;
-
-fn large_json() -> String {
-    let mut s = String::from("{\"users\":[");
-    for i in 0..10_000 {
-        s.push_str(&format!(
-            "{{\"id\":{},\"name\":\"user{}\",\"active\":true}},",
-            i, i
-        ));
-    }
-    s.pop();
-    s.push_str("]}");
-    s
-}
+mod common;
+use common::large_json;
 
 fn bench_json_pointer(c: &mut Criterion) {
     let json = large_json();
