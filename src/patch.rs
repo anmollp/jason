@@ -1,5 +1,6 @@
 use crate::JsonValue;
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum PatchOperation {
     Replace { path: String, value: JsonValue },
     Remove { path: String },
