@@ -9,16 +9,17 @@ pub fn diff(old: &JsonValue, new: &JsonValue) -> Vec<PatchOperation> {
 fn diff_inner(old: &JsonValue, new: &JsonValue, path: &str, patches: &mut Vec<PatchOperation>) {
     match (old, new) {
         (JsonValue::Object(old_map), JsonValue::Object(new_map)) => {
-            for key in old_map.keys() {
-                if !new_map.contains_key(key) {
-                    patches.push(PatchOperation::Remove {
-                        path: join_path(path, key),
-                    })
+            for (key, old_value) in old_map {
+                match new_map.get(key) {
+                    None => {
+                        patches.push(PatchOperation::Remove {
+                            path: join_path(path, key),
+                        })
+                    },
+                    Some(new_value) => {
+                        diff_inner(old_value, new_value, &join_path(path, key), patches);
+                    }
                 }
-                if let Some(new_value) = new_map.get(key) {
-                    let old_value = old_map.get(key).unwrap();
-                    diff_inner(old_value, new_value, &join_path(path, key), patches)
-                };
             }
             for key in new_map.keys() {
                 if !old_map.contains_key(key) {
