@@ -11,11 +11,9 @@ fn diff_inner(old: &JsonValue, new: &JsonValue, path: &str, patches: &mut Vec<Pa
         (JsonValue::Object(old_map), JsonValue::Object(new_map)) => {
             for (key, old_value) in old_map {
                 match new_map.get(key) {
-                    None => {
-                        patches.push(PatchOperation::Remove {
-                            path: join_path(path, key),
-                        })
-                    },
+                    None => patches.push(PatchOperation::Remove {
+                        path: join_path(path, key),
+                    }),
                     Some(new_value) => {
                         diff_inner(old_value, new_value, &join_path(path, key), patches);
                     }
