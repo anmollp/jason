@@ -1,7 +1,6 @@
 #![allow(dead_code)]
-use std::collections::BTreeMap;
 use jason::{JsonValue, PatchOperation};
-
+use std::collections::BTreeMap;
 
 pub fn medium_json() -> String {
     let mut s = String::from("{\"users\":[");
@@ -58,10 +57,7 @@ pub fn make_array_json(size: usize, changed_index: usize) -> (JsonValue, JsonVal
         }
     }
 
-    (
-        JsonValue::Array(a),
-        JsonValue::Array(b),
-    )
+    (JsonValue::Array(a), JsonValue::Array(b))
 }
 
 pub fn make_object_json(size: usize, changed_index: usize) -> (JsonValue, JsonValue) {
@@ -78,10 +74,7 @@ pub fn make_object_json(size: usize, changed_index: usize) -> (JsonValue, JsonVa
         }
     }
 
-    (
-        JsonValue::Object(a),
-        JsonValue::Object(b),
-    )
+    (JsonValue::Object(a), JsonValue::Object(b))
 }
 
 pub fn make_replace_operations(size: usize) -> Vec<PatchOperation> {

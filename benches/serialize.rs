@@ -1,6 +1,6 @@
+use criterion::{Criterion, criterion_group, criterion_main};
+use jason::{parse_from_str, to_json_string, to_pretty_string};
 use std::hint::black_box;
-use criterion::{criterion_group, criterion_main, Criterion};
-use jason::{to_pretty_string, to_json_string, parse_from_str};
 mod common;
 use common::large_json;
 
