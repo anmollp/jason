@@ -15,9 +15,12 @@ fn main() {
         [command, flag] if command == "patch" && flag == "--stdin" => {
             std::process::exit(patch_stdin());
         }
+        [command, flag] if command == "pointer" && flag == "--stdin" => {
+            std::process::exit(pointer_stdin());
+        }
         _ => {
             eprintln!(
-                "Usage: jason format --stdin\n       jason diff --stdin\n       jason patch --stdin"
+                "Usage: jason format --stdin\n       jason diff --stdin\n       jason patch --stdin\n       jason pointer --stdin"
             );
             std::process::exit(2);
         }
@@ -132,6 +135,40 @@ fn patch_stdin() -> i32 {
     }
 
     if let Err(err) = writeln!(io::stdout(), "{}", to_pretty_string(&document)) {
+        eprintln!("failed to write stdout: {err}");
+        return 1;
+    }
+
+    0
+}
+
+fn pointer_stdin() -> i32 {
+    let mut input = String::new();
+
+    if let Err(err) = io::stdin().read_to_string(&mut input) {
+        eprintln!("failed to read stdin: {err}");
+        return 1;
+    }
+
+    let Some((document_input, pointer_path)) = input.split_once('\0') else {
+        eprintln!("pointer stdin payload must contain one NUL separator");
+        return 1;
+    };
+
+    let document = match parse_from_str(document_input) {
+        Ok(value) => value,
+        Err(err) => {
+            eprintln!("document: {err}");
+            return 1;
+        }
+    };
+
+    let Some(value) = document.pointer(pointer_path.trim()) else {
+        eprintln!("pointer: path not found");
+        return 1;
+    };
+
+    if let Err(err) = writeln!(io::stdout(), "{}", to_pretty_string(value)) {
         eprintln!("failed to write stdout: {err}");
         return 1;
     }
