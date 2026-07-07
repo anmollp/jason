@@ -141,6 +141,90 @@ fn diff_stdin_reports_which_side_failed_to_parse() {
 }
 
 #[test]
+fn patch_stdin_applies_patch_operations() {
+    let mut child = jason_command()
+        .args(["patch", "--stdin"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn jason CLI");
+
+    child
+        .stdin
+        .as_mut()
+        .expect("open stdin")
+        .write_all(br#"{"status":"draft","plan":"starter"}"#)
+        .expect("write document JSON");
+
+    child
+        .stdin
+        .as_mut()
+        .expect("open stdin")
+        .write_all(b"\0")
+        .expect("write separator");
+
+    child
+        .stdin
+        .as_mut()
+        .expect("open stdin")
+        .write_all(
+            br#"[{"op":"replace","path":"/status","value":"ready"},{"op":"add","path":"/timeoutMs","value":3000}]"#,
+        )
+        .expect("write patch JSON");
+
+    let output = child.wait_with_output().expect("wait for jason CLI");
+
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout).expect("stdout is UTF-8"),
+        "{\n  \"plan\": \"starter\",\n  \"status\": \"ready\",\n  \"timeoutMs\": 3000\n}\n"
+    );
+    assert_eq!(output.stderr, b"");
+}
+
+#[test]
+fn patch_stdin_reports_which_input_failed_to_parse() {
+    let mut child = jason_command()
+        .args(["patch", "--stdin"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn jason CLI");
+
+    child
+        .stdin
+        .as_mut()
+        .expect("open stdin")
+        .write_all(br#"{"a":1}"#)
+        .expect("write document JSON");
+
+    child
+        .stdin
+        .as_mut()
+        .expect("open stdin")
+        .write_all(b"\0")
+        .expect("write separator");
+
+    child
+        .stdin
+        .as_mut()
+        .expect("open stdin")
+        .write_all(b"{true: 1}")
+        .expect("write patch JSON");
+
+    let output = child.wait_with_output().expect("wait for jason CLI");
+
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.stdout, b"");
+
+    let stderr = String::from_utf8(output.stderr).expect("stderr is UTF-8");
+    assert!(stderr.contains("patch:"));
+    assert!(stderr.contains("Expected a string key"));
+}
+
+#[test]
 fn invalid_usage_exits_with_usage_error() {
     let output = jason_command()
         .args(["format"])
@@ -153,6 +237,6 @@ fn invalid_usage_exits_with_usage_error() {
     let stderr = String::from_utf8(output.stderr).expect("stderr is UTF-8");
     assert_eq!(
         stderr,
-        "Usage: jason format --stdin\n       jason diff --stdin\n"
+        "Usage: jason format --stdin\n       jason diff --stdin\n       jason patch --stdin\n"
     );
 }
