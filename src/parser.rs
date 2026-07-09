@@ -136,10 +136,11 @@ impl<'a> Parser<'a> {
         loop {
             array.push(self.parse_value()?);
 
-            if self.eat(Token::Comma)? {
+            if let Some(comma_position) = self.peek_comma_position()? {
+                self.next()?;
                 if self.eat(Token::RightBracket)? {
                     return Err(JsonError::Parser(ParserError::TrailingComma(
-                        self.last_position(),
+                        comma_position,
                     )));
                 }
                 continue;
@@ -202,11 +203,12 @@ impl<'a> Parser<'a> {
             let value = self.parse_value()?;
             object.insert(key, value);
             // If comma
-            if self.eat(Token::Comma)? {
+            if let Some(comma_position) = self.peek_comma_position()? {
+                self.next()?;
                 // Check trailing comma
                 if self.eat(Token::RightBrace)? {
                     return Err(JsonError::Parser(ParserError::TrailingComma(
-                        self.last_position(),
+                        comma_position,
                     )));
                 }
                 continue;
@@ -222,5 +224,12 @@ impl<'a> Parser<'a> {
             )));
         }
         Ok(JsonValue::Object(object))
+    }
+
+    fn peek_comma_position(&mut self) -> Result<Option<Position>, JsonError> {
+        Ok(match self.peek()? {
+            Some(t) if t.token == Token::Comma => Some(t.position),
+            _ => None,
+        })
     }
 }
