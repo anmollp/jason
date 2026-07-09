@@ -314,12 +314,28 @@ mod parser_invalid_tests {
     fn test_trailing_comma() {
         let result = parse_from_str("[1, 2,]");
         match result {
-            Err(JsonError::Parser(ParserError::TrailingComma(_))) => {}
+            Err(JsonError::Parser(ParserError::TrailingComma(pos))) => {
+                assert_eq!(pos.line, 1);
+                assert_eq!(pos.column, 6);
+            }
             _ => panic!("expected trailing comma error"),
         }
         let result = parse_from_str("{\"a\": false,}");
         match result {
-            Err(JsonError::Parser(ParserError::TrailingComma(_))) => {}
+            Err(JsonError::Parser(ParserError::TrailingComma(pos))) => {
+                assert_eq!(pos.line, 1);
+                assert_eq!(pos.column, 12);
+            }
+            _ => panic!("expected trailing comma error"),
+        }
+        let result = parse_from_str(
+            "{\n  \"service\": \"billing\",\n  \"region\": \"us-east-1\",\n  \"retry\": true,\n}",
+        );
+        match result {
+            Err(JsonError::Parser(ParserError::TrailingComma(pos))) => {
+                assert_eq!(pos.line, 4);
+                assert_eq!(pos.column, 16);
+            }
             _ => panic!("expected trailing comma error"),
         }
     }
