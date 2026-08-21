@@ -48,6 +48,6 @@ fn diff_inner(old: &JsonValue, new: &JsonValue, path: &str, patches: &mut Vec<Pa
 }
 
 fn join_path(base: &str, segment: &str) -> String {
-    let path = vec![base, segment];
-    path.join("/")
+    let escaped = segment.replace('~', "~0").replace('/', "~1");
+    format!("{base}/{escaped}")
 }

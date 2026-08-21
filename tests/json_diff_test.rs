@@ -1,4 +1,4 @@
-use jason::{JsonValue, diff};
+use jason::{JsonValue, PatchOperation, diff, parse_from_str};
 use std::collections::BTreeMap;
 
 #[test]
@@ -194,5 +194,27 @@ fn test_diff_boolean_values() {
         result.apply(patch).unwrap();
     }
 
+    assert_eq!(result, new);
+}
+
+#[test]
+fn test_diff_escapes_json_pointer_segments() {
+    let old = parse_from_str(r#"{"a/b":{"m~n":1}}"#).unwrap();
+    let new = parse_from_str(r#"{"a/b":{"m~n":2}}"#).unwrap();
+
+    let patches = diff(&old, &new);
+
+    assert_eq!(
+        patches,
+        vec![PatchOperation::Replace {
+            path: "/a~1b/m~0n".to_string(),
+            value: JsonValue::Number(2.0),
+        }]
+    );
+
+    let mut result = old;
+    for patch in patches {
+        result.apply(patch).unwrap();
+    }
     assert_eq!(result, new);
 }
